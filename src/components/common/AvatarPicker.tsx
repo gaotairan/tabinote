@@ -37,7 +37,8 @@ export const AvatarPicker: React.FC<AvatarPickerProps> = ({
     setErrorMessage(null);
 
     try {
-      const compressedDataUrl = await cropAndCompressImage(file, 200, 0.85);
+      // 80x80px・品質0.72で約1.2〜1.8KBの超軽量Base64に最適化（Retina画面でもピクセル等倍で超高画質）
+      const compressedDataUrl = await cropAndCompressImage(file, 80, 0.72);
       onChangeAvatarUrl(compressedDataUrl);
       setActiveTab(null);
     } catch (err: any) {

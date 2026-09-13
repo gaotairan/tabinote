@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { PRESET_AVATARS } from '../../utils/imageUtils';
 import './MemberAvatar.css';
 
 export type AvatarSize = 'xs' | 'sm' | 'md' | 'lg' | 'xl' | number;
@@ -30,12 +31,19 @@ export const MemberAvatar: React.FC<MemberAvatarProps> = ({
   style = {},
   title,
 }) => {
-  const [prevUrl, setPrevUrl] = useState(avatarUrl);
+  // 短縮記号（*0, *1等）が直接渡された場合の解決フォールバック
+  let resolvedUrl = avatarUrl;
+  if (resolvedUrl && resolvedUrl.startsWith('*')) {
+    const pIdx = parseInt(resolvedUrl.slice(1), 10);
+    resolvedUrl = PRESET_AVATARS[pIdx]?.url || resolvedUrl;
+  }
+
+  const [prevUrl, setPrevUrl] = useState(resolvedUrl);
   const [imgError, setImgError] = useState(false);
 
   // URLが変わったらエラー状態を直接リセット
-  if (prevUrl !== avatarUrl) {
-    setPrevUrl(avatarUrl);
+  if (prevUrl !== resolvedUrl) {
+    setPrevUrl(resolvedUrl);
     setImgError(false);
   }
 
@@ -51,7 +59,7 @@ export const MemberAvatar: React.FC<MemberAvatarProps> = ({
   }
 
   const initialLetter = name ? name.trim().slice(0, 1) : '?';
-  const showImage = Boolean(avatarUrl && !imgError);
+  const showImage = Boolean(resolvedUrl && !imgError);
 
   return (
     <div

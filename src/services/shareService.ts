@@ -88,7 +88,12 @@ function packTripForQr(t: Trip): unknown[] {
     let av = m.avatarUrl || '';
     if (av) {
       const pIdx = PRESET_AVATARS.findIndex((p) => p.url === av);
-      av = pIdx >= 0 ? '*' + pIdx : '';
+      if (pIdx >= 0) {
+        av = '*' + pIdx;
+      } else if (av.startsWith('data:') && av.length > 12000) {
+        // 過去の極大Base64（12KB超）のみQRコードの物理制限を超えないよう退避
+        av = '';
+      }
     }
     return [m.name, m.avatarColor, m.role || '', av];
   }) || [];
@@ -139,16 +144,15 @@ function packTrip(t: Trip): unknown[] {
     }
   }
 
-  // メンバーアバターの短縮（プリセットは*0〜、Base64はURL肥大化防止のため除外）
+  // メンバーアバターの短縮（プリセットは*0〜、Base64や外部画像URLも100%保持）
   const membersPacked = t.members?.map((m) => {
     let av = m.avatarUrl || '';
     if (av) {
       const pIdx = PRESET_AVATARS.findIndex((p) => p.url === av);
       if (pIdx >= 0) {
         av = '*' + pIdx;
-      } else if (av.startsWith('data:')) {
-        av = '';
       }
+      // Base64画像や外部URLはそのまま保持！消去しない
     }
     return [m.id, m.name, m.avatarColor, m.role || '', m.email || '', av];
   }) || [];
