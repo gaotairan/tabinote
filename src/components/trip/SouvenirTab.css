@@ -1,0 +1,188 @@
+.souvenir-tab {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.souvenir-summary-card {
+  background: #ffffff;
+  border-radius: var(--radius-lg);
+  padding: 18px 24px;
+  border: 1px solid var(--border-color);
+  box-shadow: var(--shadow-sm);
+  display: flex;
+  align-items: center;
+  justify-content: space-around;
+  gap: 16px;
+}
+
+.summary-col {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+
+.summary-label {
+  font-size: 0.78rem;
+  color: var(--text-muted);
+  font-weight: 600;
+}
+
+.summary-value {
+  font-size: 1.15rem;
+  font-weight: 800;
+  color: var(--text-main);
+}
+
+.price-highlight {
+  color: #ea580c;
+}
+
+.add-souvenir-card {
+  background: #ffffff;
+  border-radius: var(--radius-lg);
+  padding: 20px 24px;
+  border: 1px solid var(--border-color);
+  box-shadow: var(--shadow-sm);
+}
+
+.form-title {
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--text-main);
+  margin-bottom: 14px;
+}
+
+.souvenir-form {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.add-souvenir-btn {
+  align-self: flex-start;
+  margin-top: 4px;
+}
+
+.empty-souvenirs {
+  background: #ffffff;
+  border-radius: var(--radius-lg);
+  border: 2px dashed var(--border-color);
+  padding: 48px 24px;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+}
+
+.empty-gift {
+  color: var(--text-muted);
+}
+
+.souvenirs-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 12px;
+}
+
+.souvenir-card {
+  background: #ffffff;
+  border-radius: var(--radius-md);
+  padding: 12px 16px;
+  border: 1px solid var(--border-color);
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.souvenir-card:hover {
+  border-color: #cbd5e1;
+  box-shadow: var(--shadow-sm);
+}
+
+.souvenir-card.bought {
+  background: #f8fafc;
+}
+
+.souvenir-card.bought .souvenir-name {
+  text-decoration: line-through;
+  color: var(--text-muted);
+}
+
+.souvenir-content {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.souvenir-title-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.souvenir-name {
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--text-main);
+}
+
+.souvenir-price {
+  font-size: 0.85rem;
+  font-weight: 800;
+  color: #ea580c;
+}
+
+.souvenir-tags-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.souvenir-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  font-size: 0.72rem;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: var(--radius-full);
+}
+
+.for-tag {
+  background: #fdf2f8;
+  color: #db2777;
+  border: 1px solid #fbcfe8;
+}
+
+.place-tag {
+  background: #f0fdf4;
+  color: #15803d;
+  border: 1px solid #bbf7d0;
+}
+
+.souvenir-memo {
+  font-size: 0.78rem;
+  color: var(--text-secondary);
+  line-height: 1.4;
+  background: var(--bg-main);
+  padding: 6px 10px;
+  border-radius: var(--radius-sm);
+}
+
+@media (max-width: 640px) {
+  .souvenir-summary-card {
+    padding: 14px;
+  }
+  .add-souvenir-btn {
+    width: 100%;
+    justify-content: center;
+  }
+}

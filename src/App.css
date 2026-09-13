@@ -1,0 +1,23 @@
+.app-root {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  background-color: var(--bg-main);
+}
+
+.app-main-content {
+  flex: 1;
+  width: 100%;
+}
+
+.trip-content-container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 24px 20px 80px;
+}
+
+@media (max-width: 640px) {
+  .trip-content-container {
+    padding: 16px 14px 100px;
+  }
+}

@@ -1,0 +1,111 @@
+.cover-presets-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+  margin-top: 4px;
+}
+
+.cover-preset-item {
+  position: relative;
+  height: 70px;
+  border-radius: var(--radius-md);
+  background-size: cover;
+  background-position: center;
+  cursor: pointer;
+  border: 3px solid transparent;
+  transition: all 0.2s ease;
+  overflow: hidden;
+  display: flex;
+  align-items: flex-end;
+  padding: 6px 8px;
+}
+
+.cover-preset-item::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(to top, rgba(0, 0, 0, 0.7) 0%, transparent 80%);
+}
+
+.cover-preset-item:hover {
+  transform: scale(1.03);
+}
+
+.cover-preset-item.active {
+  border-color: var(--primary);
+  box-shadow: 0 0 10px rgba(37, 99, 235, 0.4);
+}
+
+.preset-name {
+  position: relative;
+  z-index: 2;
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: #ffffff;
+}
+
+/* メンバー設定 */
+.members-chips-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.member-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: var(--bg-main);
+  padding: 6px 12px;
+  border-radius: var(--radius-full);
+  font-size: 0.85rem;
+  border: 1px solid var(--border-color);
+}
+
+.member-avatar-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+}
+
+.member-name {
+  font-weight: 600;
+  color: var(--text-main);
+}
+
+.member-role {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+}
+
+.chip-remove-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-muted);
+  transition: color 0.15s ease;
+  padding: 2px;
+}
+
+.chip-remove-btn:hover {
+  color: var(--rose);
+}
+
+.add-member-inputs {
+  display: flex;
+  gap: 8px;
+}
+
+.add-member-inputs .form-input {
+  flex: 1;
+}
+
+@media (max-width: 640px) {
+  .cover-presets-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  .add-member-inputs {
+    flex-direction: column;
+  }
+}

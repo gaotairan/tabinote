@@ -1,0 +1,299 @@
+.expense-tab {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.expense-overview-card {
+  background: #ffffff;
+  border-radius: var(--radius-lg);
+  padding: 24px;
+  border: 1px solid var(--border-color);
+  box-shadow: var(--shadow-sm);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.total-spent-box {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.overview-label {
+  font-size: 0.82rem;
+  color: var(--text-muted);
+  font-weight: 600;
+}
+
+.total-spent-number {
+  font-size: 2rem;
+  font-weight: 800;
+  color: var(--text-main);
+  letter-spacing: -0.02em;
+}
+
+.per-person-note {
+  font-size: 0.78rem;
+  color: var(--text-secondary);
+}
+
+.section-title-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.settlement-title {
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: var(--text-main);
+}
+
+/* 精算ルートカード */
+.settlements-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(290px, 1fr));
+  gap: 12px;
+}
+
+.settlement-card {
+  background: linear-gradient(135deg, #fffbeb 0%, #fef3c7 100%);
+  border: 1px solid #fde68a;
+  border-radius: var(--radius-md);
+  padding: 14px 18px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  box-shadow: var(--shadow-sm);
+}
+
+.settlement-route {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.route-member {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.member-avatar-mini {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  color: #ffffff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.7rem;
+  font-weight: 700;
+}
+
+.member-name-text {
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: #78350f;
+}
+
+.route-arrow {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  color: #b45309;
+}
+
+.arrow-label {
+  font-size: 0.65rem;
+  font-weight: 700;
+}
+
+.settlement-amount {
+  font-size: 1.25rem;
+  font-weight: 800;
+  color: #b45309;
+}
+
+.no-settlement-needed {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--emerald-light);
+  color: #065f46;
+  padding: 14px 16px;
+  border-radius: var(--radius-md);
+  font-size: 0.88rem;
+  font-weight: 600;
+  border: 1px solid #a7f3d0;
+}
+
+/* バランス表 */
+.balances-section {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.balances-title {
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--text-main);
+}
+
+.balances-table-card {
+  background: #ffffff;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-color);
+  overflow: hidden;
+}
+
+.balance-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 18px;
+  border-bottom: 1px solid var(--border-light);
+}
+
+.balance-row:last-child {
+  border-bottom: none;
+}
+
+.balance-member {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.balance-name {
+  font-size: 0.88rem;
+  font-weight: 600;
+  color: var(--text-main);
+}
+
+.balance-status {
+  font-size: 0.88rem;
+  font-weight: 700;
+}
+
+.bal-plus {
+  color: #059669;
+}
+
+.bal-minus {
+  color: #e11d48;
+}
+
+.bal-neutral {
+  color: var(--text-muted);
+}
+
+/* 支払い履歴テーブル */
+.expenses-list-section {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.expenses-table {
+  background: #ffffff;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-color);
+  overflow: hidden;
+}
+
+.expense-item-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 18px;
+  border-bottom: 1px solid var(--border-light);
+  gap: 12px;
+}
+
+.expense-item-row:last-child {
+  border-bottom: none;
+}
+
+.expense-left {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.expense-date {
+  font-size: 0.72rem;
+  color: var(--text-muted);
+}
+
+.expense-title {
+  font-size: 0.95rem;
+  color: var(--text-main);
+}
+
+.expense-meta {
+  font-size: 0.78rem;
+  color: var(--text-secondary);
+  display: flex;
+  gap: 8px;
+}
+
+.expense-memo {
+  color: var(--text-muted);
+}
+
+.expense-right {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.expense-amount-badge {
+  font-size: 1.1rem;
+  font-weight: 800;
+  color: var(--text-main);
+}
+
+.empty-expenses {
+  background: #ffffff;
+  border-radius: var(--radius-md);
+  border: 1px dashed var(--border-color);
+  padding: 36px 20px;
+  text-align: center;
+  color: var(--text-muted);
+  font-size: 0.88rem;
+}
+
+/* 割り勘対象チェックボックス */
+.target-members-checkboxes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.target-member-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 14px;
+  border-radius: var(--radius-full);
+  border: 1px solid var(--border-color);
+  background: var(--bg-main);
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+  transition: all 0.2s ease;
+}
+
+.target-member-btn.selected {
+  background: #eff6ff;
+  border-color: var(--primary);
+  color: var(--primary);
+}
