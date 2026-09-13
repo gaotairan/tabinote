@@ -38,22 +38,44 @@ export function loadGisScript(): Promise<void> {
  * Google OAuth 2.0でサインインしてアクセストークンを取得する
  */
 export async function getGoogleAccessToken(clientId: string): Promise<string> {
-  await loadGisScript();
+  if (!window.google?.accounts?.oauth2) {
+    await loadGisScript();
+  }
 
   return new Promise((resolve, reject) => {
     try {
+      let isSettled = false;
+      const timeoutId = setTimeout(() => {
+        if (!isSettled) {
+          isSettled = true;
+          reject(
+            new Error(
+              '認証がタイムアウトしました。ポップアップがブロックされているか、閉じられた可能性があります。'
+            )
+          );
+        }
+      }, 45000);
+
       const tokenClient = window.google.accounts.oauth2.initTokenClient({
         client_id: clientId,
         scope: SCOPES,
         error_callback: (err: any) => {
-          reject(
-            new Error(
-              err?.message ||
-                'Googleログイン画面がブロックされたか閉じられました。ポップアップを許可してください。'
-            )
-          );
+          if (!isSettled) {
+            isSettled = true;
+            clearTimeout(timeoutId);
+            reject(
+              new Error(
+                err?.message ||
+                  'Googleログイン画面がブロックされたか閉じられました。ポップアップを許可してください。'
+              )
+            );
+          }
         },
         callback: (response: any) => {
+          if (isSettled) return;
+          isSettled = true;
+          clearTimeout(timeoutId);
+
           if (response.error) {
             reject(new Error(response.error_description || response.error));
             return;
@@ -66,7 +88,8 @@ export async function getGoogleAccessToken(clientId: string): Promise<string> {
         },
       });
 
-      tokenClient.requestAccessToken({ prompt: 'consent' });
+      // ユーザージェスチャー直下で実行
+      tokenClient.requestAccessToken({ prompt: '' });
     } catch (err) {
       reject(err);
     }
