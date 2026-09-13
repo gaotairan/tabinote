@@ -9,6 +9,7 @@ import { Modal } from '../common/Modal';
 import type { Trip, Member } from '../../types/trip';
 import { PRESET_COVERS } from '../../mock/sampleTrip';
 import { differenceInCalendarDays, parseISO, format } from 'date-fns';
+import { TIMEZONE_PRESETS, inferTimeZone } from '../../utils/timezone';
 
 interface CreateTripModalProps {
   isOpen: boolean;
@@ -26,6 +27,12 @@ export const CreateTripModal: React.FC<CreateTripModalProps> = ({
   const [title, setTitle] = useState(initialTrip?.title || '');
   const [subtitle, setSubtitle] = useState(initialTrip?.subtitle || '');
   const [destination, setDestination] = useState(initialTrip?.destination || '');
+  const [timeZoneOffset, setTimeZoneOffset] = useState<number>(
+    initialTrip?.timeZoneOffset ?? 0
+  );
+  const [timeZoneName, setTimeZoneName] = useState<string>(
+    initialTrip?.timeZoneName || ''
+  );
   const [startDate, setStartDate] = useState(
     initialTrip?.startDate || format(new Date(), 'yyyy-MM-dd')
   );
@@ -75,6 +82,17 @@ export const CreateTripModal: React.FC<CreateTripModalProps> = ({
       return;
     }
     setMembers(members.filter((m) => m.id !== id));
+  };
+
+  const handleDestinationChange = (val: string) => {
+    setDestination(val);
+    if (!initialTrip) {
+      const inferred = inferTimeZone(val);
+      if (inferred) {
+        setTimeZoneOffset(inferred.offset);
+        setTimeZoneName(inferred.name);
+      }
+    }
   };
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -133,6 +151,8 @@ export const CreateTripModal: React.FC<CreateTripModalProps> = ({
       ],
       souvenirs: initialTrip?.souvenirs || [],
       expenses: initialTrip?.expenses || [],
+      timeZoneOffset,
+      timeZoneName: timeZoneName || undefined,
       createdAt: initialTrip?.createdAt || new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     };
@@ -158,7 +178,7 @@ export const CreateTripModal: React.FC<CreateTripModalProps> = ({
             className="form-input"
             value={title}
             onChange={(e) => setTitle(e.target.value)}
-            placeholder="例: 京都・嵐山満喫 2泊3日の旅 🍁"
+            placeholder="例: バルセロナ満喫 5日間の旅 ✈️"
             required
           />
         </div>
@@ -170,7 +190,7 @@ export const CreateTripModal: React.FC<CreateTripModalProps> = ({
             className="form-input"
             value={subtitle}
             onChange={(e) => setSubtitle(e.target.value)}
-            placeholder="例: 紅葉と美食と癒しの旅"
+            placeholder="例: サグラダファミリアと美食の旅"
           />
         </div>
 
@@ -182,11 +202,36 @@ export const CreateTripModal: React.FC<CreateTripModalProps> = ({
               type="text"
               className="form-input"
               value={destination}
-              onChange={(e) => setDestination(e.target.value)}
-              placeholder="例: 京都府（嵐山・祇園）"
+              onChange={(e) => handleDestinationChange(e.target.value)}
+              placeholder="例: スペイン・バルセロナ"
               required
             />
           </div>
+        </div>
+
+        <div className="form-group">
+          <label style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <span>旅行先の時差（タイムゾーン）</span>
+            <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+              {timeZoneOffset === 0 ? '時差なし (日本国内)' : `日本との時差: ${timeZoneOffset > 0 ? '+' : ''}${timeZoneOffset}h`}
+            </span>
+          </label>
+          <select
+            className="form-input"
+            value={timeZoneOffset}
+            onChange={(e) => {
+              const off = parseFloat(e.target.value);
+              setTimeZoneOffset(off);
+              const found = TIMEZONE_PRESETS.find((p) => p.offset === off);
+              if (found) setTimeZoneName(found.name);
+            }}
+          >
+            {TIMEZONE_PRESETS.map((p) => (
+              <option key={p.id} value={p.offset}>
+                {p.flag} {p.name}
+              </option>
+            ))}
+          </select>
         </div>
 
         <div className="form-row">

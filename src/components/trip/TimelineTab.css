@@ -70,6 +70,90 @@
   background: var(--primary-light);
 }
 
+/* 時差コントロールバー */
+.timezone-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
+  background: #ffffff;
+  padding: 10px 16px;
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--border-color);
+  box-shadow: var(--shadow-sm);
+}
+
+.timezone-info {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.85rem;
+}
+
+.timezone-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-weight: 700;
+  font-size: 0.78rem;
+  padding: 4px 10px;
+  border-radius: var(--radius-full);
+  background: #eff6ff;
+  color: #1d4ed8;
+  border: 1px solid #bfdbfe;
+}
+
+.timezone-settings-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  font-size: 0.78rem;
+  padding: 4px 8px;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.timezone-settings-btn:hover {
+  background: var(--bg-main);
+  color: var(--text-main);
+}
+
+.timezone-switch-group {
+  display: flex;
+  align-items: center;
+  background: var(--bg-main);
+  padding: 3px;
+  border-radius: var(--radius-full);
+  border: 1px solid var(--border-light);
+}
+
+.tz-switch-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 14px;
+  border-radius: var(--radius-full);
+  font-size: 0.82rem;
+  font-weight: 600;
+  border: none;
+  background: transparent;
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.tz-switch-btn.active {
+  background: #ffffff;
+  color: var(--primary);
+  font-weight: 800;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
+}
+
 /* 選択日のヘッダー */
 .current-day-header {
   display: flex;
@@ -100,7 +184,7 @@
 
 .timeline-item {
   display: grid;
-  grid-template-columns: 75px 44px 1fr;
+  grid-template-columns: 88px 44px 1fr;
   align-items: flex-start;
   gap: 8px;
   position: relative;
@@ -111,18 +195,46 @@
   display: flex;
   flex-direction: column;
   align-items: flex-end;
-  padding-top: 8px;
+  padding-top: 6px;
   font-weight: 700;
 }
 
 .time-primary {
   font-size: 0.95rem;
   color: var(--text-main);
+  line-height: 1.2;
 }
 
 .time-secondary {
   font-size: 0.72rem;
   color: var(--text-muted);
+  line-height: 1.2;
+  margin-top: 2px;
+}
+
+.time-sub-converted {
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: #2563eb;
+  background: #eff6ff;
+  padding: 1px 5px;
+  border-radius: 4px;
+  margin-top: 4px;
+  white-space: nowrap;
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.day-diff-badge {
+  font-size: 0.65rem;
+  font-weight: 700;
+  padding: 1px 4px;
+  border-radius: 4px;
+  background: #fef2f2;
+  color: #dc2626;
+  border: 1px solid #fecaca;
+  margin-bottom: 2px;
 }
 
 .timeline-axis {
@@ -363,7 +475,7 @@
 
 @media (max-width: 640px) {
   .timeline-item {
-    grid-template-columns: 55px 34px 1fr;
+    grid-template-columns: 68px 34px 1fr;
     gap: 6px;
   }
   .time-primary {
@@ -382,4 +494,82 @@
   .item-title {
     font-size: 0.95rem;
   }
+  .timezone-bar {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .timezone-switch-group {
+    width: 100%;
+    justify-content: center;
+  }
+  .tz-switch-btn {
+    flex: 1;
+    justify-content: center;
+  }
 }
+
+/* 時差設定モーダル */
+.tz-preset-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-height: 280px;
+  overflow-y: auto;
+  padding-right: 4px;
+}
+
+.tz-preset-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 14px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-color);
+  background: var(--bg-main);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  text-align: left;
+}
+
+.tz-preset-item:hover {
+  background: #f1f5f9;
+  border-color: #cbd5e1;
+}
+
+.tz-preset-item.selected {
+  background: #eff6ff;
+  border-color: var(--primary);
+  box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.2);
+}
+
+.tz-preset-info {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.tz-preset-flag {
+  font-size: 1.25rem;
+}
+
+.tz-preset-name {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--text-main);
+}
+
+.tz-preset-region {
+  font-size: 0.72rem;
+  color: var(--text-muted);
+}
+
+.tz-preset-offset {
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: var(--primary);
+  background: #ffffff;
+  padding: 3px 8px;
+  border-radius: var(--radius-full);
+  border: 1px solid var(--border-light);
+}
+

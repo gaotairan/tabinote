@@ -17,6 +17,8 @@ import {
   Camera,
   Activity,
   CalendarDays,
+  Globe,
+  Settings,
 } from 'lucide-react';
 import type {
   Trip,
@@ -26,6 +28,10 @@ import type {
   TransportType,
 } from '../../types/trip';
 import { Modal } from '../common/Modal';
+import {
+  convertTimeToTimezone,
+  TIMEZONE_PRESETS,
+} from '../../utils/timezone';
 import './TimelineTab.css';
 
 interface TimelineTabProps {
@@ -40,6 +46,12 @@ export const TimelineTab: React.FC<TimelineTabProps> = ({
   const [activeDayNumber, setActiveDayNumber] = useState(1);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingItem, setEditingItem] = useState<ScheduleItem | null>(null);
+
+  // 現地時間 / 日本時間(JST)の切り替え
+  const [viewMode, setViewMode] = useState<'local' | 'jst'>('local');
+  const [isTzModalOpen, setIsTzModalOpen] = useState(false);
+  const [tzOffsetInput, setTzOffsetInput] = useState(trip.timeZoneOffset ?? 0);
+  const [tzNameInput, setTzNameInput] = useState(trip.timeZoneName || '');
 
   // フォーム用状態
   const [itemTime, setItemTime] = useState('09:00');
@@ -250,6 +262,51 @@ export const TimelineTab: React.FC<TimelineTabProps> = ({
         </div>
       </div>
 
+      {/* 時差＆タイムゾーン切り替えバー */}
+      <div className="timezone-bar">
+        <div className="timezone-info">
+          <Globe size={16} style={{ color: 'var(--primary)' }} />
+          <span className="timezone-badge">
+            {trip.timeZoneName ||
+              (trip.timeZoneOffset !== undefined && trip.timeZoneOffset !== 0
+                ? `時差: ${trip.timeZoneOffset > 0 ? '+' : ''}${trip.timeZoneOffset}時間`
+                : '日本国内 (時差なし)')}
+          </span>
+          <button
+            type="button"
+            className="timezone-settings-btn"
+            onClick={() => {
+              setTzOffsetInput(trip.timeZoneOffset ?? 0);
+              setTzNameInput(trip.timeZoneName || '');
+              setIsTzModalOpen(true);
+            }}
+            title="時差・旅行先タイムゾーンを変更"
+          >
+            <Settings size={13} />
+            <span>時差設定</span>
+          </button>
+        </div>
+
+        {/* 現地時間 ⇄ 日本時間 切り替えスイッチ */}
+        <div className="timezone-switch-group">
+          <button
+            type="button"
+            className={`tz-switch-btn ${viewMode === 'local' ? 'active' : ''}`}
+            onClick={() => setViewMode('local')}
+          >
+            <Clock size={14} />
+            <span>現地時間</span>
+          </button>
+          <button
+            type="button"
+            className={`tz-switch-btn ${viewMode === 'jst' ? 'active' : ''}`}
+            onClick={() => setViewMode('jst')}
+          >
+            <span>🇯🇵 日本時間 (JST)</span>
+          </button>
+        </div>
+      </div>
+
       {/* 選択中の日のヘッダー */}
       {currentDay && (
         <div className="current-day-header">
@@ -262,14 +319,14 @@ export const TimelineTab: React.FC<TimelineTabProps> = ({
                 style={{
                   fontSize: '0.72rem',
                   fontWeight: 600,
-                  backgroundColor: '#eff6ff',
-                  color: '#2563eb',
+                  backgroundColor: viewMode === 'local' ? '#eff6ff' : '#fef3c7',
+                  color: viewMode === 'local' ? '#2563eb' : '#b45309',
                   padding: '2px 8px',
                   borderRadius: '9999px',
-                  border: '1px solid #bfdbfe',
+                  border: `1px solid ${viewMode === 'local' ? '#bfdbfe' : '#fde68a'}`,
                 }}
               >
-                現地時間
+                {viewMode === 'local' ? '現地時間表示' : '🇯🇵 日本時間 (JST) 表示'}
               </span>
             </div>
             {currentDay.title && (
@@ -298,13 +355,59 @@ export const TimelineTab: React.FC<TimelineTabProps> = ({
         <div className="timeline-list">
           {currentDay?.items.map((item, index) => {
             const catClass = getCategoryClass(item.category);
+            const tzOffset = trip.timeZoneOffset ?? 0;
+            const hasTzDiff = tzOffset !== 0;
+
+            // 時刻換算
+            const startConv = convertTimeToTimezone(item.time, tzOffset, true);
+            const endConv = item.endTime
+              ? convertTimeToTimezone(item.endTime, tzOffset, true)
+              : null;
+
+            let displayTime = item.time;
+            let displayEndTime = item.endTime;
+            let subTimeText = '';
+            let dayDiffTag = '';
+
+            if (viewMode === 'local') {
+              // 現地時間モード: メインは現地時間、サブはJST換算
+              displayTime = item.time;
+              displayEndTime = item.endTime;
+              if (hasTzDiff && item.time !== '終日') {
+                const subStart = startConv.formatted;
+                const subEnd = endConv ? `〜${endConv.formatted}` : '';
+                subTimeText = `JST ${subStart}${subEnd}`;
+              }
+            } else {
+              // 日本時間モード: メインはJST換算、サブは現地時間
+              if (item.time === '終日') {
+                displayTime = '終日';
+              } else {
+                displayTime = startConv.time;
+                displayEndTime = endConv ? endConv.time : undefined;
+                if (startConv.dayOffset !== 0) {
+                  dayDiffTag =
+                    startConv.dayOffset > 0
+                      ? `+${startConv.dayOffset}日`
+                      : `${startConv.dayOffset}日`;
+                }
+                subTimeText = `現地 ${item.time}${item.endTime ? `〜${item.endTime}` : ''}`;
+              }
+            }
+
             return (
               <div key={item.id} className="timeline-item">
                 {/* タイムライン時間 */}
                 <div className="timeline-time-col">
-                  <span className="time-primary">{item.time}</span>
-                  {item.endTime && (
-                    <span className="time-secondary">〜{item.endTime}</span>
+                  {dayDiffTag && (
+                    <span className="day-diff-badge">{dayDiffTag}</span>
+                  )}
+                  <span className="time-primary">{displayTime}</span>
+                  {displayEndTime && (
+                    <span className="time-secondary">〜{displayEndTime}</span>
+                  )}
+                  {subTimeText && (
+                    <span className="time-sub-converted">{subTimeText}</span>
                   )}
                 </div>
 
@@ -451,7 +554,7 @@ export const TimelineTab: React.FC<TimelineTabProps> = ({
 
           <div className="form-row">
             <div className="form-group flex-1">
-              <label>開始時間</label>
+              <label>開始時間（現地時間）</label>
               <input
                 type="text"
                 className="form-input"
@@ -461,7 +564,7 @@ export const TimelineTab: React.FC<TimelineTabProps> = ({
               />
             </div>
             <div className="form-group flex-1">
-              <label>終了時間（任意）</label>
+              <label>終了時間（任意・現地時間）</label>
               <input
                 type="text"
                 className="form-input"
@@ -512,6 +615,104 @@ export const TimelineTab: React.FC<TimelineTabProps> = ({
             <span>{editingItem ? '予定を更新' : '予定を追加'}</span>
           </button>
         </form>
+      </Modal>
+
+      {/* 時差設定モーダル */}
+      <Modal
+        isOpen={isTzModalOpen}
+        onClose={() => setIsTzModalOpen(false)}
+        title="旅行先の時差（タイムゾーン）設定"
+        maxWidth="520px"
+      >
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+          <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', lineHeight: 1.5 }}>
+            旅行先と日本の時差を設定すると、タイムライン上で現地時間と日本時間を自動換算してワンタップで切り替えできます。
+          </p>
+
+          <div>
+            <label style={{ fontSize: '0.82rem', fontWeight: 700, marginBottom: '8px', display: 'block' }}>
+              よく行く旅行先からワンタップ選択
+            </label>
+            <div className="tz-preset-list">
+              {TIMEZONE_PRESETS.map((p) => {
+                const isSelected =
+                  tzOffsetInput === p.offset && tzNameInput.includes(p.name.split(' ')[0]);
+                return (
+                  <button
+                    key={p.id}
+                    type="button"
+                    className={`tz-preset-item ${isSelected ? 'selected' : ''}`}
+                    onClick={() => {
+                      setTzOffsetInput(p.offset);
+                      setTzNameInput(p.name);
+                    }}
+                  >
+                    <div className="tz-preset-info">
+                      <span className="tz-preset-flag">{p.flag}</span>
+                      <div>
+                        <div className="tz-preset-name">{p.name}</div>
+                        <div className="tz-preset-region">{p.region}</div>
+                      </div>
+                    </div>
+                    <span className="tz-preset-offset">
+                      {p.offset === 0 ? '時差なし' : `${p.offset > 0 ? '+' : ''}${p.offset}h`}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          <div className="form-group">
+            <label>タイムゾーン表示名</label>
+            <input
+              type="text"
+              className="form-input"
+              value={tzNameInput}
+              onChange={(e) => setTzNameInput(e.target.value)}
+              placeholder="例: バルセロナ・西欧 (夏時間 -7h)"
+            />
+          </div>
+
+          <div className="form-group">
+            <label>日本時間 (JST: UTC+9) との時差（時間）</label>
+            <input
+              type="number"
+              step="0.5"
+              className="form-input"
+              value={tzOffsetInput}
+              onChange={(e) => setTzOffsetInput(parseFloat(e.target.value) || 0)}
+              placeholder="例: -7"
+            />
+            <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '4px' }}>
+              ※ 日本より遅れている地域（欧米など）はマイナス（例: -7）、進んでいる地域はプラス（例: +2）
+            </p>
+          </div>
+
+          <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end', marginTop: '8px' }}>
+            <button
+              type="button"
+              className="btn btn-secondary"
+              onClick={() => setIsTzModalOpen(false)}
+            >
+              キャンセル
+            </button>
+            <button
+              type="button"
+              className="btn btn-primary"
+              onClick={() => {
+                onUpdateTrip({
+                  ...trip,
+                  timeZoneOffset: tzOffsetInput,
+                  timeZoneName: tzNameInput.trim() || undefined,
+                });
+                setIsTzModalOpen(false);
+              }}
+            >
+              時差を保存
+            </button>
+          </div>
+        </div>
       </Modal>
     </div>
   );

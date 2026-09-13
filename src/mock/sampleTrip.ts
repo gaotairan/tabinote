@@ -31,6 +31,16 @@ export const PRESET_COVERS = [
     name: 'キャンプ・アウトドア',
     url: 'https://images.unsplash.com/photo-1510312305653-8ed496efae75?auto=format&fit=crop&w=1200&q=80',
   },
+  {
+    id: 'europe',
+    name: 'ヨーロッパ・街並み',
+    url: 'https://images.unsplash.com/photo-1511527661048-7fe73d85e9a4?auto=format&fit=crop&w=1200&q=80',
+  },
+  {
+    id: 'resort',
+    name: '海外リゾート・ビーチ',
+    url: 'https://images.unsplash.com/photo-1544644181-1484b3fdfc62?auto=format&fit=crop&w=1200&q=80',
+  },
 ];
 
 export const SAMPLE_TRIP: Trip = {
@@ -44,6 +54,8 @@ export const SAMPLE_TRIP: Trip = {
   themeColor: '#e05638', // 秋らしい紅葉バーミリオン
   password: 'kyoto',
   memo: '【緊急連絡先】ホテル：075-XXX-XXXX\n新幹線の座席番号は各自チケット保管！モバイルバッテリーを忘れずに。',
+  timeZoneOffset: 0,
+  timeZoneName: '日本国内 (時差なし)',
   members: [
     { id: 'm1', name: 'たろう', avatarColor: '#3b82f6', role: 'リーダー / 計画' },
     { id: 'm2', name: 'はなこ', avatarColor: '#ec4899', role: 'カメラ係 / 美食担当' },

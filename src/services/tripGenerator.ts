@@ -9,6 +9,7 @@ import type {
 } from '../types/trip';
 import type { RawCalendarEvent } from './icsParser';
 import { PRESET_COVERS } from '../mock/sampleTrip';
+import { inferTimeZone } from '../utils/timezone';
 
 /**
  * イベントのテキストからカテゴリーを判定する
@@ -221,6 +222,13 @@ export function generateTripFromEvents(
   const tripId = 'trip-' + Date.now();
   const cover = options?.coverUrl || PRESET_COVERS[1].url;
 
+  // 時差の自動推測（イベント情報や目的地から判定）
+  const allTexts = sorted
+    .map((e) => `${e.summary} ${e.location || ''} ${e.description || ''}`)
+    .join(' ');
+  const primaryTimeZone = sorted.find((e) => e.timeZone)?.timeZone;
+  const inferredTz = inferTimeZone(`${inferredDestination} ${inferredTitle} ${allTexts}`, primaryTimeZone);
+
   return {
     id: tripId,
     title: inferredTitle,
@@ -239,6 +247,8 @@ export function generateTripFromEvents(
     packingList: generateDefaultPackingList(),
     souvenirs: [],
     expenses: [],
+    timeZoneOffset: inferredTz ? inferredTz.offset : 0,
+    timeZoneName: inferredTz ? inferredTz.name : undefined,
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
   };

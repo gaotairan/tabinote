@@ -95,6 +95,8 @@ export interface Trip {
   packingList: PackingItem[];
   souvenirs: SouvenirItem[];
   expenses: ExpenseItem[];
+  timeZoneOffset?: number; // 日本時間(JST)との時差 (例: スペイン夏時間なら -7)
+  timeZoneName?: string; // タイムゾーン表示名 (例: "バルセロナ・西欧 (夏時間 -7h)")
   createdAt: string;
   updatedAt: string;
 }
