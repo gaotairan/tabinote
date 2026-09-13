@@ -10,6 +10,7 @@ import {
   UserPlus,
   Mail,
   ExternalLink,
+  Printer,
 } from 'lucide-react';
 import type { Trip } from '../../types/trip';
 import { differenceInCalendarDays, parseISO, isFuture, isToday } from 'date-fns';
@@ -21,12 +22,14 @@ interface TripOverviewTabProps {
   trip: Trip;
   onEditTrip: () => void;
   onUpdateTrip: (updatedTrip: Trip) => void;
+  onOpenPrint?: () => void;
 }
 
 export const TripOverviewTab: React.FC<TripOverviewTabProps> = ({
   trip,
   onEditTrip,
   onUpdateTrip,
+  onOpenPrint,
 }) => {
   const [isMemberModalOpen, setIsMemberModalOpen] = useState(false);
 
@@ -74,14 +77,26 @@ export const TripOverviewTab: React.FC<TripOverviewTabProps> = ({
               <Clock size={14} />
               <span>{countdownText} ({countdownSub})</span>
             </span>
-            <button
-              className="edit-trip-btn glass-effect"
-              onClick={onEditTrip}
-              title="しおり情報を編集"
-            >
-              <Edit3 size={15} />
-              <span>編集</span>
-            </button>
+            <div style={{ display: 'flex', gap: '8px', marginLeft: 'auto' }}>
+              {onOpenPrint && (
+                <button
+                  className="edit-trip-btn glass-effect"
+                  onClick={onOpenPrint}
+                  title="しおりをPDF出力・印刷"
+                >
+                  <Printer size={15} />
+                  <span>PDF作成</span>
+                </button>
+              )}
+              <button
+                className="edit-trip-btn glass-effect"
+                onClick={onEditTrip}
+                title="しおり情報を編集"
+              >
+                <Edit3 size={15} />
+                <span>編集</span>
+              </button>
+            </div>
           </div>
 
           <h2 className="overview-title">{trip.title}</h2>

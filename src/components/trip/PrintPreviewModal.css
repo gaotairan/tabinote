@@ -1,0 +1,709 @@
+/* 印刷プレビューモーダル用のスタイル */
+
+.print-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.75);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  z-index: 1000;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-start;
+  padding: 16px;
+  overflow-y: auto;
+}
+
+.print-modal-container {
+  background: #f8fafc;
+  border-radius: var(--radius-xl);
+  width: 100%;
+  max-width: 900px;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.35);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  margin: auto 0;
+  animation: modalPop 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@keyframes modalPop {
+  from {
+    opacity: 0;
+    transform: scale(0.96) translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+/* モーダルヘッダー */
+.print-modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 18px 24px;
+  background: #ffffff;
+  border-bottom: 1px solid var(--border-color);
+  position: sticky;
+  top: 0;
+  z-index: 20;
+}
+
+.print-modal-title-wrap {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.print-modal-icon-badge {
+  width: 40px;
+  height: 40px;
+  border-radius: var(--radius-md);
+  background: linear-gradient(135deg, #2563eb, #3b82f6);
+  color: #ffffff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 4px 10px rgba(37, 99, 235, 0.25);
+}
+
+.print-modal-title {
+  font-size: 1.15rem;
+  font-weight: 700;
+  color: var(--text-main);
+  margin: 0;
+}
+
+.print-modal-subtitle {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  margin: 2px 0 0;
+}
+
+.print-modal-close-btn {
+  background: #f1f5f9;
+  color: var(--text-secondary);
+  border-radius: 50%;
+  width: 34px;
+  height: 34px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+}
+
+.print-modal-close-btn:hover {
+  background: #e2e8f0;
+  color: var(--text-main);
+}
+
+/* コントロール・オプションバー */
+.print-control-bar {
+  background: #ffffff;
+  padding: 16px 24px;
+  border-bottom: 1px solid var(--border-color);
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.print-options-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px 18px;
+  align-items: center;
+}
+
+.print-option-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.85rem;
+  font-weight: 500;
+  color: var(--text-secondary);
+  cursor: pointer;
+  user-select: none;
+  background: #f8fafc;
+  padding: 6px 12px;
+  border-radius: var(--radius-full);
+  border: 1px solid var(--border-color);
+  transition: all 0.2s ease;
+}
+
+.print-option-label:hover {
+  background: #f1f5f9;
+  border-color: #cbd5e1;
+}
+
+.print-option-label input[type="checkbox"] {
+  cursor: pointer;
+  accent-color: var(--primary);
+  width: 15px;
+  height: 15px;
+}
+
+.print-actions-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.print-guide-tip {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.8rem;
+  color: #2563eb;
+  background: #eff6ff;
+  padding: 6px 12px;
+  border-radius: var(--radius-md);
+  border: 1px solid #bfdbfe;
+}
+
+.print-execute-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
+  color: #ffffff;
+  font-weight: 700;
+  font-size: 0.95rem;
+  padding: 10px 22px;
+  border-radius: var(--radius-full);
+  box-shadow: 0 4px 14px rgba(37, 99, 235, 0.35);
+  transition: all 0.2s ease;
+  margin-left: auto;
+}
+
+.print-execute-btn:hover {
+  box-shadow: 0 6px 20px rgba(37, 99, 235, 0.45);
+  transform: translateY(-1px);
+}
+
+.print-execute-btn:active {
+  transform: scale(0.98);
+}
+
+/* プレビューエリア（画面表示用） */
+.print-preview-scroll-area {
+  padding: 24px;
+  background: #e2e8f0;
+  overflow-y: auto;
+  max-height: calc(85vh - 180px);
+  display: flex;
+  justify-content: center;
+}
+
+/* A4用紙シートを模したコンテナ */
+.print-sheet {
+  background: #ffffff;
+  width: 100%;
+  max-width: 794px; /* A4の幅（96dpi換算で約794px） */
+  min-height: 1123px; /* A4の高さ */
+  padding: 36px 40px;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.12);
+  border-radius: 4px;
+  color: #1e293b;
+  font-family: var(--font-sans);
+  line-height: 1.5;
+  box-sizing: border-box;
+}
+
+/* --- しおり印刷コンテンツのデザイン --- */
+
+/* カバー・ヘッダー */
+.print-cover-section {
+  border-bottom: 2px solid #e2e8f0;
+  padding-bottom: 24px;
+  margin-bottom: 28px;
+  position: relative;
+}
+
+.print-cover-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 20px;
+}
+
+.print-brand-tag {
+  display: inline-block;
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--primary);
+  background: #eff6ff;
+  padding: 3px 10px;
+  border-radius: 9999px;
+  margin-bottom: 8px;
+}
+
+.print-trip-title {
+  font-size: 1.85rem;
+  font-weight: 800;
+  color: #0f172a;
+  line-height: 1.2;
+  margin-bottom: 6px;
+}
+
+.print-trip-subtitle {
+  font-size: 1rem;
+  color: #475569;
+  margin-bottom: 12px;
+}
+
+.print-meta-badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px 18px;
+  font-size: 0.875rem;
+  color: #334155;
+  font-weight: 600;
+  margin-top: 10px;
+}
+
+.print-meta-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.print-cover-photo-wrapper {
+  margin-top: 18px;
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  max-height: 220px;
+  border: 1px solid #cbd5e1;
+}
+
+.print-cover-photo {
+  width: 100%;
+  height: 220px;
+  object-fit: cover;
+  display: block;
+}
+
+/* QRコードボックス */
+.print-qr-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: var(--radius-md);
+  padding: 10px;
+  text-align: center;
+  flex-shrink: 0;
+  width: 110px;
+}
+
+.print-qr-caption {
+  font-size: 0.65rem;
+  font-weight: 600;
+  color: #64748b;
+  margin-top: 6px;
+  line-height: 1.2;
+}
+
+/* メンバー一覧 */
+.print-members-box {
+  margin-top: 16px;
+  padding: 12px 16px;
+  background: #f8fafc;
+  border-radius: var(--radius-md);
+  border-left: 4px solid var(--primary);
+}
+
+.print-members-title {
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: #475569;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-bottom: 8px;
+}
+
+.print-members-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px 20px;
+}
+
+.print-member-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.print-member-name {
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.print-member-role {
+  font-size: 0.72rem;
+  color: #64748b;
+  background: #e2e8f0;
+  padding: 2px 6px;
+  border-radius: 4px;
+}
+
+/* セクション共通 */
+.print-section {
+  margin-bottom: 28px;
+  page-break-inside: avoid;
+  break-inside: avoid;
+}
+
+.print-section-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  border-bottom: 2px solid #0f172a;
+  padding-bottom: 6px;
+  margin-bottom: 16px;
+}
+
+.print-section-title {
+  font-size: 1.15rem;
+  font-weight: 800;
+  color: #0f172a;
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* 日程タイムライン */
+.print-day-block {
+  margin-bottom: 20px;
+  border: 1px solid #e2e8f0;
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  page-break-inside: avoid;
+  break-inside: avoid;
+}
+
+.print-day-header {
+  background: #f1f5f9;
+  padding: 10px 16px;
+  border-bottom: 1px solid #e2e8f0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.print-day-badge {
+  font-size: 0.95rem;
+  font-weight: 800;
+  color: #1e3a8a;
+}
+
+.print-day-date {
+  font-size: 0.85rem;
+  color: #475569;
+  font-weight: 600;
+}
+
+.print-day-title {
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: #0f172a;
+  margin-left: 12px;
+}
+
+.print-timeline-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.85rem;
+}
+
+.print-timeline-table th,
+.print-timeline-table td {
+  padding: 8px 12px;
+  border-bottom: 1px solid #f1f5f9;
+  vertical-align: top;
+}
+
+.print-timeline-table th {
+  background: #f8fafc;
+  color: #475569;
+  font-weight: 700;
+  text-align: left;
+  font-size: 0.75rem;
+}
+
+.print-timeline-time {
+  font-weight: 700;
+  color: #2563eb;
+  width: 90px;
+  white-space: nowrap;
+}
+
+.print-timeline-item-title {
+  font-weight: 700;
+  color: #0f172a;
+  font-size: 0.9rem;
+}
+
+.print-timeline-loc {
+  font-size: 0.75rem;
+  color: #64748b;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-top: 2px;
+}
+
+.print-timeline-memo {
+  font-size: 0.75rem;
+  color: #475569;
+  margin-top: 2px;
+  background: #f8fafc;
+  padding: 4px 8px;
+  border-radius: 4px;
+}
+
+.print-timeline-cost {
+  font-weight: 600;
+  color: #059669;
+  text-align: right;
+  width: 80px;
+  white-space: nowrap;
+}
+
+/* 持ち物リスト */
+.print-packing-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 12px;
+}
+
+.print-packing-cat-card {
+  border: 1px solid #e2e8f0;
+  border-radius: var(--radius-md);
+  padding: 10px 12px;
+  background: #ffffff;
+  page-break-inside: avoid;
+  break-inside: avoid;
+}
+
+.print-packing-cat-title {
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: #475569;
+  border-bottom: 1px solid #f1f5f9;
+  padding-bottom: 4px;
+  margin-bottom: 6px;
+}
+
+.print-packing-item-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  padding: 3px 0;
+  font-size: 0.8rem;
+}
+
+.print-check-box-square {
+  width: 13px;
+  height: 13px;
+  border: 1.5px solid #64748b;
+  border-radius: 2px;
+  display: inline-block;
+  flex-shrink: 0;
+}
+
+.print-packing-name {
+  flex: 1;
+  color: #1e293b;
+}
+
+.print-packing-assignee {
+  font-size: 0.68rem;
+  color: #64748b;
+  background: #f1f5f9;
+  padding: 1px 4px;
+  border-radius: 3px;
+}
+
+/* お土産リスト */
+.print-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.82rem;
+  border: 1px solid #e2e8f0;
+  border-radius: var(--radius-md);
+  overflow: hidden;
+}
+
+.print-table th {
+  background: #f8fafc;
+  color: #475569;
+  font-weight: 700;
+  padding: 8px 10px;
+  text-align: left;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.print-table td {
+  padding: 8px 10px;
+  border-bottom: 1px solid #f1f5f9;
+  vertical-align: middle;
+}
+
+/* メモ・注意事項 */
+.print-memo-box {
+  background: #fffbeb;
+  border: 1px solid #fde68a;
+  border-left: 4px solid #f59e0b;
+  border-radius: var(--radius-md);
+  padding: 14px 18px;
+  font-size: 0.85rem;
+  color: #78350f;
+  white-space: pre-wrap;
+  line-height: 1.6;
+}
+
+/* フッター */
+.print-footer {
+  margin-top: 36px;
+  padding-top: 14px;
+  border-top: 1px solid #e2e8f0;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 0.72rem;
+  color: #94a3b8;
+}
+
+/* =========================================================
+   印刷時スタイル (@media print)
+   印刷ダイアログ起動時に画面の余計なUIを消し、しおりシートのみをA4印刷
+   ========================================================= */
+@media print {
+  @page {
+    size: A4 portrait;
+    margin: 10mm 12mm;
+  }
+
+  /* 画面全体の不要なUIを完全非表示 */
+  body, html {
+    background: #ffffff !important;
+    color: #000000 !important;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+
+  /* アプリヘッダー、ナビゲーション、メインビュー、トースト等はすべて非表示 */
+  .app-header,
+  .app-navigation,
+  .app-main-content,
+  .shared-toast-banner,
+  .modal-overlay:not(.print-modal-overlay),
+  .print-modal-header,
+  .print-control-bar,
+  .print-guide-tip,
+  .print-execute-btn,
+  .print-modal-close-btn {
+    display: none !important;
+  }
+
+  /* モーダルオーバーレイの解除 */
+  .print-modal-overlay {
+    position: static !important;
+    background: transparent !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    overflow: visible !important;
+    backdrop-filter: none !important;
+  }
+
+  .print-modal-container {
+    background: transparent !important;
+    box-shadow: none !important;
+    border: none !important;
+    width: 100% !important;
+    max-width: none !important;
+    margin: 0 !important;
+    border-radius: 0 !important;
+    overflow: visible !important;
+    animation: none !important;
+  }
+
+  .print-preview-scroll-area {
+    background: transparent !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    max-height: none !important;
+    overflow: visible !important;
+  }
+
+  /* A4しおり用紙のスタイル */
+  .print-sheet {
+    max-width: 100% !important;
+    min-height: auto !important;
+    padding: 0 !important;
+    box-shadow: none !important;
+    border-radius: 0 !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  /* 改ページ制御 */
+  .print-cover-section {
+    page-break-after: auto;
+  }
+
+  .print-section,
+  .print-day-block,
+  .print-packing-cat-card,
+  .print-table tr {
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
+  }
+
+  .page-break {
+    page-break-before: always !important;
+    break-before: page !important;
+  }
+}
+
+/* スマホ表示最適化 */
+@media (max-width: 640px) {
+  .print-modal-overlay {
+    padding: 8px;
+  }
+  .print-modal-header {
+    padding: 12px 16px;
+  }
+  .print-control-bar {
+    padding: 12px 16px;
+  }
+  .print-preview-scroll-area {
+    padding: 10px;
+  }
+  .print-sheet {
+    padding: 20px 16px;
+  }
+  .print-trip-title {
+    font-size: 1.4rem;
+  }
+  .print-actions-row {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .print-execute-btn {
+    width: 100%;
+    justify-content: center;
+  }
+}

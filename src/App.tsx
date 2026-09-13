@@ -14,8 +14,60 @@ import { PackingTab } from './components/trip/PackingTab';
 import { SouvenirTab } from './components/trip/SouvenirTab';
 import { ExpenseTab } from './components/trip/ExpenseTab';
 import { ShareModal } from './components/trip/ShareModal';
+import { PrintPreviewModal } from './components/trip/PrintPreviewModal';
 import { Sparkles, X, AlertTriangle } from 'lucide-react';
 import './App.css';
+
+// 画面が真っ白になるのを防ぐエラーバウンダリ
+class AppErrorBoundary extends React.Component<
+  { children: React.ReactNode; onReset?: () => void },
+  { hasError: boolean; error: Error | null }
+> {
+  constructor(props: { children: React.ReactNode; onReset?: () => void }) {
+    super(props);
+    this.state = { hasError: false, error: null };
+  }
+
+  static getDerivedStateFromError(error: Error) {
+    return { hasError: true, error };
+  }
+
+  componentDidCatch(error: Error, errorInfo: any) {
+    console.error('AppErrorBoundary caught error:', error, errorInfo);
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div style={{ padding: '24px', maxWidth: '600px', margin: '40px auto', background: '#fff', borderRadius: '12px', boxShadow: '0 4px 20px rgba(0,0,0,0.1)' }}>
+          <h2 style={{ color: '#dc2626', marginBottom: '12px' }}>⚠️ 予期せぬエラーが発生しました</h2>
+          <p style={{ color: '#4b5563', fontSize: '0.9rem', marginBottom: '16px' }}>
+            {this.state.error?.message || '不明なエラーが発生しました'}
+          </p>
+          <button
+            onClick={() => {
+              this.setState({ hasError: false, error: null });
+              if (this.props.onReset) this.props.onReset();
+              else window.location.reload();
+            }}
+            style={{
+              padding: '8px 16px',
+              backgroundColor: '#2563eb',
+              color: '#fff',
+              border: 'none',
+              borderRadius: '6px',
+              cursor: 'pointer',
+              fontWeight: 600,
+            }}
+          >
+            画面を再読み込みして復旧
+          </button>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
 
 export const App: React.FC = () => {
   // 共有データ（#share=...）からの初回読み込み判定
@@ -73,6 +125,7 @@ export const App: React.FC = () => {
   const [isEditOpen, setIsEditOpen] = useState(false);
   const [isCalendarImportOpen, setIsCalendarImportOpen] = useState(false);
   const [isShareOpen, setIsShareOpen] = useState(false);
+  const [isPrintOpen, setIsPrintOpen] = useState(false);
 
   // URLハッシュと同期
   useEffect(() => {
@@ -184,6 +237,7 @@ export const App: React.FC = () => {
         onOpenCreate={() => setIsCreateOpen(true)}
         onOpenCalendarImport={() => setIsCalendarImportOpen(true)}
         onOpenShare={() => setIsShareOpen(true)}
+        onOpenPrint={() => setIsPrintOpen(true)}
       />
 
       {/* 共有読み込み完了 / エラートースト */}
@@ -238,6 +292,7 @@ export const App: React.FC = () => {
                 trip={activeTrip}
                 onEditTrip={() => setIsEditOpen(true)}
                 onUpdateTrip={handleUpdateTrip}
+                onOpenPrint={() => setIsPrintOpen(true)}
               />
             )}
             {activeTab === 'timeline' && (
@@ -306,7 +361,19 @@ export const App: React.FC = () => {
           isOpen={isShareOpen}
           onClose={() => setIsShareOpen(false)}
           trip={activeTrip}
+          onOpenPrint={() => setIsPrintOpen(true)}
         />
+      )}
+
+      {/* しおりPDF作成 / 印刷プレビューモーダル */}
+      {activeTrip && isPrintOpen && (
+        <AppErrorBoundary onReset={() => setIsPrintOpen(false)}>
+          <PrintPreviewModal
+            isOpen={isPrintOpen}
+            onClose={() => setIsPrintOpen(false)}
+            trip={activeTrip}
+          />
+        </AppErrorBoundary>
       )}
     </div>
   );

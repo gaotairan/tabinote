@@ -17,6 +17,7 @@ import {
   Plus,
   Trash2,
   Users,
+  Printer,
 } from 'lucide-react';
 import type { Trip } from '../../types/trip';
 import { Modal } from '../common/Modal';
@@ -29,12 +30,14 @@ interface ShareModalProps {
   isOpen: boolean;
   onClose: () => void;
   trip: Trip;
+  onOpenPrint?: () => void;
 }
 
 export const ShareModal: React.FC<ShareModalProps> = ({
   isOpen,
   onClose,
   trip,
+  onOpenPrint,
 }) => {
   const [copiedUrl, setCopiedUrl] = useState(false);
   const [copiedSummary, setCopiedSummary] = useState(false);
@@ -500,6 +503,30 @@ export const ShareModal: React.FC<ShareModalProps> = ({
           >
             <Share2 size={16} />
             <span>スマホの共有メニューを開く（LINE・AirDropなど）</span>
+          </button>
+        )}
+
+        {/* PDF作成 / 印刷ボタン */}
+        {onOpenPrint && (
+          <button
+            type="button"
+            className="btn btn-secondary share-pdf-btn"
+            style={{
+              width: '100%',
+              justifyContent: 'center',
+              padding: '10px 16px',
+              background: '#f8fafc',
+              border: '1px solid #cbd5e1',
+              color: 'var(--text-main)',
+              fontWeight: 700,
+            }}
+            onClick={() => {
+              onClose();
+              onOpenPrint();
+            }}
+          >
+            <Printer size={16} color="var(--primary)" />
+            <span>しおりをPDF出力 / A4印刷する</span>
           </button>
         )}
 

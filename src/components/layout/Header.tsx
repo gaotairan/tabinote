@@ -1,5 +1,5 @@
 import React from 'react';
-import { Compass, Plus, Calendar, Share2, ArrowLeft } from 'lucide-react';
+import { Compass, Plus, Calendar, Share2, ArrowLeft, Printer } from 'lucide-react';
 import type { Trip } from '../../types/trip';
 import './Header.css';
 
@@ -10,6 +10,7 @@ interface HeaderProps {
   onOpenCalendarImport: () => void;
   onOpenShare?: () => void;
   onOpenExport?: () => void;
+  onOpenPrint?: () => void;
 }
 
 export const Header: React.FC<HeaderProps> = ({
@@ -18,6 +19,7 @@ export const Header: React.FC<HeaderProps> = ({
   onOpenCreate,
   onOpenCalendarImport,
   onOpenShare,
+  onOpenPrint,
 }) => {
   return (
     <header className="app-header glass-effect">
@@ -57,6 +59,16 @@ export const Header: React.FC<HeaderProps> = ({
         <div className="header-actions">
           {activeTrip ? (
             <>
+              {onOpenPrint && (
+                <button
+                  className="btn btn-secondary print-btn"
+                  onClick={onOpenPrint}
+                  title="しおりをPDF出力・印刷"
+                >
+                  <Printer size={16} />
+                  <span className="btn-text">PDF作成</span>
+                </button>
+              )}
               {onOpenShare && (
                 <button
                   className="btn btn-secondary share-btn"
