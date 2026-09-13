@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Clock,
   Plus,
@@ -19,6 +19,9 @@ import {
   CalendarDays,
   Globe,
   Settings,
+  ArrowUp,
+  Layers,
+  ListOrdered,
 } from 'lucide-react';
 import type {
   Trip,
@@ -46,6 +49,22 @@ export const TimelineTab: React.FC<TimelineTabProps> = ({
   const [activeDayNumber, setActiveDayNumber] = useState(1);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingItem, setEditingItem] = useState<ScheduleItem | null>(null);
+  const [editingOriginalDayNumber, setEditingOriginalDayNumber] = useState<number | null>(null);
+  const [targetDayNumber, setTargetDayNumber] = useState(1);
+
+  // 表示モード：日別タブ表示 ('tabs') vs 全日程縦スクロール表示 ('scroll')
+  const [scheduleViewMode, setScheduleViewMode] = useState<'tabs' | 'scroll'>(() => {
+    try {
+      const saved = localStorage.getItem('tabinote_schedule_view_mode');
+      if (saved === 'tabs' || saved === 'scroll') return saved;
+    } catch {
+      // localStorage disabled / fallback
+    }
+    return 'tabs';
+  });
+
+  // トップへ戻るフローティングボタン表示フラグ
+  const [showScrollTop, setShowScrollTop] = useState(false);
 
   // 現地時間 / 日本時間(JST)の切り替え
   const [viewMode, setViewMode] = useState<'local' | 'jst'>('local');
@@ -63,11 +82,48 @@ export const TimelineTab: React.FC<TimelineTabProps> = ({
   const [itemMemo, setItemMemo] = useState('');
   const [itemCost, setItemCost] = useState('');
 
+  // スクロール検知
+  useEffect(() => {
+    const handleScroll = () => {
+      setShowScrollTop(window.scrollY > 250);
+    };
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
+
+  const scrollToTop = () => {
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const handleToggleViewMode = (mode: 'tabs' | 'scroll') => {
+    setScheduleViewMode(mode);
+    try {
+      localStorage.setItem('tabinote_schedule_view_mode', mode);
+    } catch {
+      // ignore
+    }
+  };
+
+  const handleDaySelect = (dayNumber: number) => {
+    setActiveDayNumber(dayNumber);
+    if (scheduleViewMode === 'scroll') {
+      const targetEl = document.getElementById(`day-section-${dayNumber}`);
+      if (targetEl) {
+        const yOffset = -80;
+        const y = targetEl.getBoundingClientRect().top + window.pageYOffset + yOffset;
+        window.scrollTo({ top: y, behavior: 'smooth' });
+      }
+    }
+  };
+
   const currentDay =
     trip.days.find((d) => d.dayNumber === activeDayNumber) || trip.days[0];
 
-  const handleOpenAdd = () => {
+  const handleOpenAdd = (dayNumber?: number) => {
+    const dNum = dayNumber ?? activeDayNumber;
+    setTargetDayNumber(dNum);
     setEditingItem(null);
+    setEditingOriginalDayNumber(null);
     setItemTime('10:00');
     setItemEndTime('');
     setItemTitle('');
@@ -79,7 +135,9 @@ export const TimelineTab: React.FC<TimelineTabProps> = ({
     setIsModalOpen(true);
   };
 
-  const handleOpenEdit = (item: ScheduleItem) => {
+  const handleOpenEdit = (item: ScheduleItem, dayNumber: number) => {
+    setTargetDayNumber(dayNumber);
+    setEditingOriginalDayNumber(dayNumber);
     setEditingItem(item);
     setItemTime(item.time || '10:00');
     setItemEndTime(item.endTime || '');
@@ -115,32 +173,46 @@ export const TimelineTab: React.FC<TimelineTabProps> = ({
     };
 
     const updatedDays = trip.days.map((day) => {
-      if (day.dayNumber === activeDayNumber) {
-        let items = [...day.items];
+      let items = [...day.items];
+
+      // 日程間移動のケース
+      if (
+        editingItem &&
+        editingOriginalDayNumber !== null &&
+        editingOriginalDayNumber !== targetDayNumber
+      ) {
+        if (day.dayNumber === editingOriginalDayNumber) {
+          items = items.filter((it) => it.id !== editingItem.id);
+        }
+        if (day.dayNumber === targetDayNumber) {
+          items.push(newItem);
+        }
+      } else if (day.dayNumber === targetDayNumber) {
         if (editingItem) {
           items = items.map((it) => (it.id === editingItem.id ? newItem : it));
         } else {
           items.push(newItem);
         }
-        // 時刻順にソート
-        items.sort((a, b) => {
-          if (a.time === '終日') return -1;
-          if (b.time === '終日') return 1;
-          return a.time.localeCompare(b.time);
-        });
-        return { ...day, items };
       }
-      return day;
+
+      // 時刻順にソート
+      items.sort((a, b) => {
+        if (a.time === '終日') return -1;
+        if (b.time === '終日') return 1;
+        return a.time.localeCompare(b.time);
+      });
+
+      return { ...day, items };
     });
 
     onUpdateTrip({ ...trip, days: updatedDays });
     setIsModalOpen(false);
   };
 
-  const handleDeleteItem = (itemId: string) => {
+  const handleDeleteItem = (itemId: string, dayNumber: number) => {
     if (!confirm('この予定を削除しますか？')) return;
     const updatedDays = trip.days.map((day) => {
-      if (day.dayNumber === activeDayNumber) {
+      if (day.dayNumber === dayNumber) {
         return {
           ...day,
           items: day.items.filter((it) => it.id !== itemId),
@@ -153,7 +225,6 @@ export const TimelineTab: React.FC<TimelineTabProps> = ({
 
   const handleAddNewDay = () => {
     const nextNum = trip.days.length + 1;
-    // 最終日の翌日を計算
     const lastDay = trip.days[trip.days.length - 1];
     let nextDate = trip.endDate;
     if (lastDay) {
@@ -173,13 +244,19 @@ export const TimelineTab: React.FC<TimelineTabProps> = ({
       days: [...trip.days, newDay],
     });
     setActiveDayNumber(nextNum);
+    if (scheduleViewMode === 'scroll') {
+      setTimeout(() => {
+        const targetEl = document.getElementById(`day-section-${nextNum}`);
+        if (targetEl) {
+          targetEl.scrollIntoView({ behavior: 'smooth' });
+        }
+      }, 100);
+    }
   };
 
   const getCategoryIcon = (item: ScheduleItem) => {
     if (item.category === 'transport') {
       switch (item.transportType) {
-        case 'train':
-          return <Train size={18} />;
         case 'plane':
           return <Plane size={18} />;
         case 'car':
@@ -190,6 +267,7 @@ export const TimelineTab: React.FC<TimelineTabProps> = ({
           return <Footprints size={18} />;
         case 'ship':
           return <Ship size={18} />;
+        case 'train':
         default:
           return <Train size={18} />;
       }
@@ -225,261 +303,434 @@ export const TimelineTab: React.FC<TimelineTabProps> = ({
     }
   };
 
+  const getDayOfWeekStr = (dateStr: string) => {
+    const dateObj = new Date(dateStr);
+    const daysOfWeek = ['日', '月', '火', '水', '木', '金', '土'];
+    return isNaN(dateObj.getTime()) ? '' : `(${daysOfWeek[dateObj.getDay()]})`;
+  };
+
+  // タイムラインの各アイテムをレンダリングする共通関数
+  const renderTimelineItem = (
+    item: ScheduleItem,
+    dayNumber: number,
+    index: number,
+    totalItems: number
+  ) => {
+    const catClass = getCategoryClass(item.category);
+    const tzOffset = trip.timeZoneOffset ?? 0;
+    const hasTzDiff = tzOffset !== 0;
+
+    // 時刻換算
+    const startConv = convertTimeToTimezone(item.time, tzOffset, true);
+    const endConv = item.endTime
+      ? convertTimeToTimezone(item.endTime, tzOffset, true)
+      : null;
+
+    let displayTime = item.time;
+    let displayEndTime = item.endTime;
+    let subTimeText = '';
+    let dayDiffTag = '';
+
+    if (viewMode === 'local') {
+      // 現地時間モード: メインは現地時間、サブはJST換算
+      displayTime = item.time;
+      displayEndTime = item.endTime;
+      if (hasTzDiff && item.time !== '終日') {
+        const subStart = startConv.formatted;
+        const subEnd = endConv ? `〜${endConv.formatted}` : '';
+        subTimeText = `JST ${subStart}${subEnd}`;
+      }
+    } else {
+      // 日本時間モード: メインはJST換算、サブは現地時間
+      if (item.time === '終日') {
+        displayTime = '終日';
+      } else {
+        displayTime = startConv.time;
+        displayEndTime = endConv ? endConv.time : undefined;
+        if (startConv.dayOffset !== 0) {
+          dayDiffTag =
+            startConv.dayOffset > 0
+              ? `+${startConv.dayOffset}日`
+              : `${startConv.dayOffset}日`;
+        }
+        subTimeText = `現地 ${item.time}${item.endTime ? `〜${item.endTime}` : ''}`;
+      }
+    }
+
+    return (
+      <div key={item.id} className="timeline-item">
+        {/* タイムライン時間 */}
+        <div className="timeline-time-col">
+          {dayDiffTag && (
+            <span className="day-diff-badge">{dayDiffTag}</span>
+          )}
+          <span className="time-primary">{displayTime}</span>
+          {displayEndTime && (
+            <span className="time-secondary">〜{displayEndTime}</span>
+          )}
+          {subTimeText && (
+            <span className="time-sub-converted">{subTimeText}</span>
+          )}
+        </div>
+
+        {/* タイムラインの軸・アイコン */}
+        <div className="timeline-axis">
+          <div className={`timeline-icon-box ${catClass}`}>
+            {getCategoryIcon(item)}
+          </div>
+          {index < totalItems - 1 && <div className="timeline-line" />}
+        </div>
+
+        {/* 予定詳細カード */}
+        <div className="timeline-card">
+          <div className="timeline-card-header">
+            <h4 className="item-title">{item.title}</h4>
+            <div className="item-actions">
+              <button
+                type="button"
+                className="action-icon-btn"
+                onClick={() => handleOpenEdit(item, dayNumber)}
+                title="編集"
+              >
+                <Edit2 size={14} />
+              </button>
+              <button
+                type="button"
+                className="action-icon-btn delete-btn"
+                onClick={() => handleDeleteItem(item.id, dayNumber)}
+                title="削除"
+              >
+                <Trash2 size={14} />
+              </button>
+            </div>
+          </div>
+
+          {item.location && (
+            <div className="item-location-row">
+              <MapPin size={14} className="location-icon" />
+              <span className="location-text">{item.location}</span>
+              {item.locationUrl && (
+                <a
+                  href={item.locationUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="maps-link-badge"
+                >
+                  <span>マップで開く</span>
+                  <ExternalLink size={11} />
+                </a>
+              )}
+            </div>
+          )}
+
+          {item.memo && (
+            <div className="item-memo-box">
+              <p className="item-memo-text">{item.memo}</p>
+            </div>
+          )}
+
+          {item.cost && (
+            <div className="item-cost-badge">
+              <span>目安費用: ¥{item.cost.toLocaleString()}</span>
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  };
+
   return (
     <div className="timeline-tab fade-in">
-      {/* 日程セレクターバー */}
-      <div className="day-selector-bar">
-        <div className="day-tabs-scroll">
-          {trip.days.map((day) => {
-            const isActive = day.dayNumber === activeDayNumber;
-            const dateObj = new Date(day.date);
-            const daysOfWeek = ['日', '月', '火', '水', '木', '金', '土'];
-            const dayOfWeekStr = isNaN(dateObj.getTime())
-              ? ''
-              : `(${daysOfWeek[dateObj.getDay()]})`;
+      {/* 上部コントロールバー（表示形式切り替え ＆ 日程ジャンプバー） */}
+      <div className="schedule-header-controls">
+        {/* 日程セレクター・ジャンプバー */}
+        <div className="day-selector-bar">
+          <div className="day-tabs-scroll">
+            {trip.days.map((day) => {
+              const isActive = day.dayNumber === activeDayNumber;
+              const dayOfWeekStr = getDayOfWeekStr(day.date);
 
-            return (
-              <button
-                key={day.dayNumber}
-                className={`day-tab-btn ${isActive ? 'active' : ''}`}
-                onClick={() => setActiveDayNumber(day.dayNumber)}
-              >
-                <span className="day-number-tag">Day {day.dayNumber}</span>
-                <span className="day-date-tag">
-                  {day.date.slice(5)} {dayOfWeekStr}
-                </span>
-              </button>
-            );
-          })}
-          <button
-            className="day-tab-btn add-day-btn"
-            onClick={handleAddNewDay}
-            title="日程（日目）を追加"
-          >
-            <Plus size={16} />
-            <span>日を追加</span>
-          </button>
-        </div>
-      </div>
-
-      {/* 時差＆タイムゾーン切り替えバー */}
-      <div className="timezone-bar">
-        <div className="timezone-info">
-          <Globe size={16} style={{ color: 'var(--primary)' }} />
-          <span className="timezone-badge">
-            {trip.timeZoneName ||
-              (trip.timeZoneOffset !== undefined && trip.timeZoneOffset !== 0
-                ? `時差: ${trip.timeZoneOffset > 0 ? '+' : ''}${trip.timeZoneOffset}時間`
-                : '日本国内 (時差なし)')}
-          </span>
-          <button
-            type="button"
-            className="timezone-settings-btn"
-            onClick={() => {
-              setTzOffsetInput(trip.timeZoneOffset ?? 0);
-              setTzNameInput(trip.timeZoneName || '');
-              setIsTzModalOpen(true);
-            }}
-            title="時差・旅行先タイムゾーンを変更"
-          >
-            <Settings size={13} />
-            <span>時差設定</span>
-          </button>
-        </div>
-
-        {/* 現地時間 ⇄ 日本時間 切り替えスイッチ */}
-        <div className="timezone-switch-group">
-          <button
-            type="button"
-            className={`tz-switch-btn ${viewMode === 'local' ? 'active' : ''}`}
-            onClick={() => setViewMode('local')}
-          >
-            <Clock size={14} />
-            <span>現地時間</span>
-          </button>
-          <button
-            type="button"
-            className={`tz-switch-btn ${viewMode === 'jst' ? 'active' : ''}`}
-            onClick={() => setViewMode('jst')}
-          >
-            <span>🇯🇵 日本時間 (JST)</span>
-          </button>
-        </div>
-      </div>
-
-      {/* 選択中の日のヘッダー */}
-      {currentDay && (
-        <div className="current-day-header">
-          <div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <h3 className="day-title">
-                {currentDay.dayNumber}日目 ({currentDay.date})
-              </h3>
-              <span
-                style={{
-                  fontSize: '0.72rem',
-                  fontWeight: 600,
-                  backgroundColor: viewMode === 'local' ? '#eff6ff' : '#fef3c7',
-                  color: viewMode === 'local' ? '#2563eb' : '#b45309',
-                  padding: '2px 8px',
-                  borderRadius: '9999px',
-                  border: `1px solid ${viewMode === 'local' ? '#bfdbfe' : '#fde68a'}`,
-                }}
-              >
-                {viewMode === 'local' ? '現地時間表示' : '🇯🇵 日本時間 (JST) 表示'}
-              </span>
-            </div>
-            {currentDay.title && (
-              <p className="day-subtitle">{currentDay.title}</p>
-            )}
+              return (
+                <button
+                  key={day.dayNumber}
+                  type="button"
+                  className={`day-tab-btn ${isActive ? 'active' : ''} ${
+                    scheduleViewMode === 'scroll' ? 'jump-mode' : ''
+                  }`}
+                  onClick={() => handleDaySelect(day.dayNumber)}
+                  title={
+                    scheduleViewMode === 'scroll'
+                      ? `${day.dayNumber}日目の位置へジャンプ`
+                      : `${day.dayNumber}日目を表示`
+                  }
+                >
+                  <span className="day-number-tag">Day {day.dayNumber}</span>
+                  <span className="day-date-tag">
+                    {day.date.slice(5)} {dayOfWeekStr}
+                  </span>
+                </button>
+              );
+            })}
+            <button
+              type="button"
+              className="day-tab-btn add-day-btn"
+              onClick={handleAddNewDay}
+              title="日程（日目）を追加"
+            >
+              <Plus size={16} />
+              <span>日を追加</span>
+            </button>
           </div>
-          <button className="btn btn-primary" onClick={handleOpenAdd}>
-            <Plus size={16} />
-            <span>予定を追加</span>
-          </button>
+        </div>
+
+        {/* コントロール列（表示形式スイッチ ＆ 時差切り替えバー） */}
+        <div className="timeline-sub-bar">
+          {/* 表示形式切り替えスイッチ（日別タブ ⇄ 全日程スクロール） */}
+          <div className="view-mode-toggle-group" title="スケジュールの表示方法を切り替え">
+            <button
+              type="button"
+              className={`view-mode-toggle-btn ${scheduleViewMode === 'tabs' ? 'active' : ''}`}
+              onClick={() => handleToggleViewMode('tabs')}
+            >
+              <Layers size={14} />
+              <span>日別タブ</span>
+            </button>
+            <button
+              type="button"
+              className={`view-mode-toggle-btn ${scheduleViewMode === 'scroll' ? 'active' : ''}`}
+              onClick={() => handleToggleViewMode('scroll')}
+            >
+              <ListOrdered size={14} />
+              <span>全日程（連続）</span>
+            </button>
+          </div>
+
+          {/* 時差＆タイムゾーン情報・スイッチ */}
+          <div className="timezone-group">
+            <div className="timezone-info">
+              <Globe size={15} style={{ color: 'var(--primary)' }} />
+              <span className="timezone-badge">
+                {trip.timeZoneName ||
+                  (trip.timeZoneOffset !== undefined && trip.timeZoneOffset !== 0
+                    ? `時差: ${trip.timeZoneOffset > 0 ? '+' : ''}${trip.timeZoneOffset}時間`
+                    : '時差なし')}
+              </span>
+              <button
+                type="button"
+                className="timezone-settings-btn"
+                onClick={() => {
+                  setTzOffsetInput(trip.timeZoneOffset ?? 0);
+                  setTzNameInput(trip.timeZoneName || '');
+                  setIsTzModalOpen(true);
+                }}
+                title="時差・旅行先タイムゾーンを変更"
+              >
+                <Settings size={13} />
+                <span>時差設定</span>
+              </button>
+            </div>
+
+            {/* 現地時間 ⇄ 日本時間 切り替えスイッチ */}
+            <div className="timezone-switch-group">
+              <button
+                type="button"
+                className={`tz-switch-btn ${viewMode === 'local' ? 'active' : ''}`}
+                onClick={() => setViewMode('local')}
+              >
+                <Clock size={13} />
+                <span>現地時間</span>
+              </button>
+              <button
+                type="button"
+                className={`tz-switch-btn ${viewMode === 'jst' ? 'active' : ''}`}
+                onClick={() => setViewMode('jst')}
+              >
+                <span>🇯🇵 日本時間</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* ========================================================
+          表示パターン1: 日別タブ表示 (scheduleViewMode === 'tabs')
+         ======================================================== */}
+      {scheduleViewMode === 'tabs' && (
+        <div className="tab-view-container fade-in">
+          {/* 選択中の日のヘッダー */}
+          {currentDay && (
+            <div className="current-day-header">
+              <div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <h3 className="day-title">
+                    {currentDay.dayNumber}日目 ({currentDay.date} {getDayOfWeekStr(currentDay.date)})
+                  </h3>
+                  <span
+                    style={{
+                      fontSize: '0.72rem',
+                      fontWeight: 600,
+                      backgroundColor: viewMode === 'local' ? '#eff6ff' : '#fef3c7',
+                      color: viewMode === 'local' ? '#2563eb' : '#b45309',
+                      padding: '2px 8px',
+                      borderRadius: '9999px',
+                      border: `1px solid ${viewMode === 'local' ? '#bfdbfe' : '#fde68a'}`,
+                    }}
+                  >
+                    {viewMode === 'local' ? '現地時間表示' : '🇯🇵 日本時間 (JST)'}
+                  </span>
+                </div>
+                {currentDay.title && (
+                  <p className="day-subtitle">{currentDay.title}</p>
+                )}
+              </div>
+              <button className="btn btn-primary" onClick={() => handleOpenAdd(currentDay.dayNumber)}>
+                <Plus size={16} />
+                <span>予定を追加</span>
+              </button>
+            </div>
+          )}
+
+          {/* タイムラインリスト */}
+          {currentDay && currentDay.items.length === 0 ? (
+            <div className="empty-timeline">
+              <Clock size={40} className="empty-clock" />
+              <h4>この日の予定はまだありません</h4>
+              <p>「予定を追加」ボタンからタイムラインを作成しましょう！</p>
+              <button className="btn btn-secondary" onClick={() => handleOpenAdd(currentDay.dayNumber)}>
+                <Plus size={16} />
+                <span>最初の予定を追加</span>
+              </button>
+            </div>
+          ) : (
+            <>
+              <div className="timeline-list">
+                {currentDay?.items.map((item, index) =>
+                  renderTimelineItem(item, currentDay.dayNumber, index, currentDay.items.length)
+                )}
+              </div>
+
+              {/* リスト末尾のアクションエリア（予定追加 & 一番上へ戻る） */}
+              <div className="timeline-footer-actions">
+                <button
+                  type="button"
+                  className="btn btn-secondary btn-sm"
+                  onClick={() => handleOpenAdd(currentDay.dayNumber)}
+                >
+                  <Plus size={15} />
+                  <span>この日に予定を追加</span>
+                </button>
+                <button
+                  type="button"
+                  className="btn btn-secondary btn-sm scroll-top-inline-btn"
+                  onClick={scrollToTop}
+                  title="上部の日程選択へ戻る"
+                >
+                  <ArrowUp size={15} />
+                  <span>一番上（日程選択）へ戻る</span>
+                </button>
+              </div>
+            </>
+          )}
         </div>
       )}
 
-      {/* タイムラインリスト */}
-      {currentDay && currentDay.items.length === 0 ? (
-        <div className="empty-timeline">
-          <Clock size={40} className="empty-clock" />
-          <h4>この日の予定はまだありません</h4>
-          <p>「予定を追加」ボタンからタイムラインを作成しましょう！</p>
-          <button className="btn btn-secondary" onClick={handleOpenAdd}>
-            <Plus size={16} />
-            <span>最初の予定を追加</span>
-          </button>
-        </div>
-      ) : (
-        <div className="timeline-list">
-          {currentDay?.items.map((item, index) => {
-            const catClass = getCategoryClass(item.category);
-            const tzOffset = trip.timeZoneOffset ?? 0;
-            const hasTzDiff = tzOffset !== 0;
-
-            // 時刻換算
-            const startConv = convertTimeToTimezone(item.time, tzOffset, true);
-            const endConv = item.endTime
-              ? convertTimeToTimezone(item.endTime, tzOffset, true)
-              : null;
-
-            let displayTime = item.time;
-            let displayEndTime = item.endTime;
-            let subTimeText = '';
-            let dayDiffTag = '';
-
-            if (viewMode === 'local') {
-              // 現地時間モード: メインは現地時間、サブはJST換算
-              displayTime = item.time;
-              displayEndTime = item.endTime;
-              if (hasTzDiff && item.time !== '終日') {
-                const subStart = startConv.formatted;
-                const subEnd = endConv ? `〜${endConv.formatted}` : '';
-                subTimeText = `JST ${subStart}${subEnd}`;
-              }
-            } else {
-              // 日本時間モード: メインはJST換算、サブは現地時間
-              if (item.time === '終日') {
-                displayTime = '終日';
-              } else {
-                displayTime = startConv.time;
-                displayEndTime = endConv ? endConv.time : undefined;
-                if (startConv.dayOffset !== 0) {
-                  dayDiffTag =
-                    startConv.dayOffset > 0
-                      ? `+${startConv.dayOffset}日`
-                      : `${startConv.dayOffset}日`;
-                }
-                subTimeText = `現地 ${item.time}${item.endTime ? `〜${item.endTime}` : ''}`;
-              }
-            }
-
+      {/* ========================================================
+          表示パターン2: 全日程縦スクロール表示 (scheduleViewMode === 'scroll')
+         ======================================================== */}
+      {scheduleViewMode === 'scroll' && (
+        <div className="scroll-view-container fade-in">
+          {trip.days.map((day) => {
+            const dayOfWeekStr = getDayOfWeekStr(day.date);
             return (
-              <div key={item.id} className="timeline-item">
-                {/* タイムライン時間 */}
-                <div className="timeline-time-col">
-                  {dayDiffTag && (
-                    <span className="day-diff-badge">{dayDiffTag}</span>
-                  )}
-                  <span className="time-primary">{displayTime}</span>
-                  {displayEndTime && (
-                    <span className="time-secondary">〜{displayEndTime}</span>
-                  )}
-                  {subTimeText && (
-                    <span className="time-sub-converted">{subTimeText}</span>
-                  )}
-                </div>
-
-                {/* タイムラインの軸・アイコン */}
-                <div className="timeline-axis">
-                  <div className={`timeline-icon-box ${catClass}`}>
-                    {getCategoryIcon(item)}
+              <section
+                key={day.dayNumber}
+                id={`day-section-${day.dayNumber}`}
+                className="day-scroll-section"
+              >
+                {/* 日ごとの見出しヘッダー */}
+                <div className="day-scroll-header">
+                  <div className="day-scroll-header-left">
+                    <span className="day-scroll-badge">Day {day.dayNumber}</span>
+                    <h3 className="day-scroll-date">
+                      {day.date.slice(5)} {dayOfWeekStr}
+                    </h3>
+                    {day.title && <span className="day-scroll-title">{day.title}</span>}
                   </div>
-                  {index < currentDay.items.length - 1 && (
-                    <div className="timeline-line" />
-                  )}
+                  <button
+                    type="button"
+                    className="btn btn-sm btn-primary day-add-item-btn"
+                    onClick={() => handleOpenAdd(day.dayNumber)}
+                  >
+                    <Plus size={14} />
+                    <span>予定を追加</span>
+                  </button>
                 </div>
 
-                {/* 予定詳細カード */}
-                <div className="timeline-card">
-                  <div className="timeline-card-header">
-                    <h4 className="item-title">{item.title}</h4>
-                    <div className="item-actions">
-                      <button
-                        className="action-icon-btn"
-                        onClick={() => handleOpenEdit(item)}
-                        title="編集"
-                      >
-                        <Edit2 size={14} />
-                      </button>
-                      <button
-                        className="action-icon-btn delete-btn"
-                        onClick={() => handleDeleteItem(item.id)}
-                        title="削除"
-                      >
-                        <Trash2 size={14} />
-                      </button>
-                    </div>
+                {/* 日ごとのタイムラインリスト */}
+                {day.items.length === 0 ? (
+                  <div className="empty-day-box">
+                    <p>この日の予定はまだありません</p>
+                    <button
+                      type="button"
+                      className="btn btn-secondary btn-sm"
+                      onClick={() => handleOpenAdd(day.dayNumber)}
+                    >
+                      <Plus size={13} />
+                      <span>予定を追加</span>
+                    </button>
                   </div>
-
-                  {item.location && (
-                    <div className="item-location-row">
-                      <MapPin size={14} className="location-icon" />
-                      <span className="location-text">{item.location}</span>
-                      {item.locationUrl && (
-                        <a
-                          href={item.locationUrl}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="maps-link-badge"
-                        >
-                          <span>マップで開く</span>
-                          <ExternalLink size={11} />
-                        </a>
-                      )}
-                    </div>
-                  )}
-
-                  {item.memo && (
-                    <div className="item-memo-box">
-                      <p className="item-memo-text">{item.memo}</p>
-                    </div>
-                  )}
-
-                  {item.cost && (
-                    <div className="item-cost-badge">
-                      <span>目安費用: ¥{item.cost.toLocaleString()}</span>
-                    </div>
-                  )}
-                </div>
-              </div>
+                ) : (
+                  <div className="timeline-list">
+                    {day.items.map((item, index) =>
+                      renderTimelineItem(item, day.dayNumber, index, day.items.length)
+                    )}
+                  </div>
+                )}
+              </section>
             );
           })}
+
+          {/* 全日程スクロール末尾のアクションエリア */}
+          <div className="all-days-footer-actions">
+            <button
+              type="button"
+              className="btn btn-secondary"
+              onClick={handleAddNewDay}
+            >
+              <Plus size={16} />
+              <span>次の日程（Day {trip.days.length + 1}）を追加</span>
+            </button>
+            <button
+              type="button"
+              className="btn btn-secondary scroll-top-inline-btn"
+              onClick={scrollToTop}
+            >
+              <ArrowUp size={16} />
+              <span>一番上へ戻る</span>
+            </button>
+          </div>
         </div>
       )}
 
-      {/* 予定追加・編集モーダル */}
+      {/* ========================================================
+          画面右下のフローティング「一番上へ戻る」ボタン
+         ======================================================== */}
+      {showScrollTop && (
+        <button
+          type="button"
+          className="floating-scroll-top-btn"
+          onClick={scrollToTop}
+          title="一番上へ戻る"
+          aria-label="一番上へ戻る"
+        >
+          <ArrowUp size={18} />
+          <span>TOP</span>
+        </button>
+      )}
+
+      {/* ========================================================
+          予定追加・編集モーダル
+         ======================================================== */}
       <Modal
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
@@ -487,6 +738,22 @@ export const TimelineTab: React.FC<TimelineTabProps> = ({
         maxWidth="500px"
       >
         <form onSubmit={handleSaveItem} className="fade-in">
+          {/* 日程選択（どの日に追加・変更するか） */}
+          <div className="form-group">
+            <label>対象の日程 *</label>
+            <select
+              className="form-input"
+              value={targetDayNumber}
+              onChange={(e) => setTargetDayNumber(Number(e.target.value))}
+            >
+              {trip.days.map((d) => (
+                <option key={d.dayNumber} value={d.dayNumber}>
+                  Day {d.dayNumber} ({d.date.slice(5)} {getDayOfWeekStr(d.date)}) {d.title ? `- ${d.title}` : ''}
+                </option>
+              ))}
+            </select>
+          </div>
+
           <div className="form-group">
             <label>カテゴリー *</label>
             <div className="category-select-grid">
@@ -601,47 +868,61 @@ export const TimelineTab: React.FC<TimelineTabProps> = ({
           </div>
 
           <div className="form-group">
-            <label>費用目安（円）</label>
-            <input
-              type="number"
-              className="form-input"
-              value={itemCost}
-              onChange={(e) => setItemCost(e.target.value)}
-              placeholder="例: 1200"
-            />
+            <label>費用目安（任意）</label>
+            <div className="input-with-prefix">
+              <span className="input-prefix">¥</span>
+              <input
+                type="number"
+                className="form-input"
+                value={itemCost}
+                onChange={(e) => setItemCost(e.target.value)}
+                placeholder="例: 400"
+              />
+            </div>
           </div>
 
-          <button type="submit" className="btn btn-primary btn-block" style={{ marginTop: 12 }}>
-            <span>{editingItem ? '予定を更新' : '予定を追加'}</span>
-          </button>
+          <div className="modal-actions">
+            <button
+              type="button"
+              className="btn btn-secondary"
+              onClick={() => setIsModalOpen(false)}
+            >
+              キャンセル
+            </button>
+            <button type="submit" className="btn btn-primary">
+              {editingItem ? '更新する' : '追加する'}
+            </button>
+          </div>
         </form>
       </Modal>
 
-      {/* 時差設定モーダル */}
+      {/* ========================================================
+          タイムゾーン（時差）設定モーダル
+         ======================================================== */}
       <Modal
         isOpen={isTzModalOpen}
         onClose={() => setIsTzModalOpen(false)}
-        title="旅行先の時差（タイムゾーン）設定"
-        maxWidth="520px"
+        title="時差・タイムゾーンの設定"
+        maxWidth="480px"
       >
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-          <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', lineHeight: 1.5 }}>
-            旅行先と日本の時差を設定すると、タイムライン上で現地時間と日本時間を自動換算してワンタップで切り替えできます。
+        <div className="timezone-modal-content">
+          <p className="tz-modal-desc">
+            旅行先の国や都市を選択するか、日本時間（UTC+9）との時差を時間単位で入力してください。
+            設定すると、現地時間と日本時間をワンタップで切り替え・換算表示できるようになります。
           </p>
 
-          <div>
-            <label style={{ fontSize: '0.82rem', fontWeight: 700, marginBottom: '8px', display: 'block' }}>
-              よく行く旅行先からワンタップ選択
-            </label>
-            <div className="tz-preset-list">
+          <div className="form-group">
+            <label>人気のプリセットから選択</label>
+            <div className="tz-presets-grid">
               {TIMEZONE_PRESETS.map((p) => {
                 const isSelected =
-                  tzOffsetInput === p.offset && tzNameInput.includes(p.name.split(' ')[0]);
+                  trip.timeZoneOffset === p.offset &&
+                  trip.timeZoneName === p.name;
                 return (
                   <button
-                    key={p.id}
+                    key={p.name}
                     type="button"
-                    className={`tz-preset-item ${isSelected ? 'selected' : ''}`}
+                    className={`tz-preset-card ${isSelected ? 'selected' : ''}`}
                     onClick={() => {
                       setTzOffsetInput(p.offset);
                       setTzNameInput(p.name);
