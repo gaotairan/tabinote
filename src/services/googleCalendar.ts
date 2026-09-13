@@ -96,15 +96,46 @@ export async function getGoogleAccessToken(clientId: string): Promise<string> {
   });
 }
 
+export interface GoogleCalendarInfo {
+  id: string;
+  summary: string;
+  primary?: boolean;
+}
+
 /**
- * 指定期間のGoogleカレンダー予定を取得する
+ * ユーザーのカレンダー一覧を取得する
+ */
+export async function fetchCalendarList(accessToken: string): Promise<GoogleCalendarInfo[]> {
+  try {
+    const url = 'https://www.googleapis.com/calendar/v3/users/me/calendarList';
+    const res = await fetch(url, {
+      headers: { Authorization: `Bearer ${accessToken}` },
+    });
+    if (!res.ok) return [{ id: 'primary', summary: 'メインカレンダー', primary: true }];
+    const data = await res.json();
+    return (data.items || []).map((c: any) => ({
+      id: c.id,
+      summary: c.summary,
+      primary: !!c.primary,
+    }));
+  } catch (e) {
+    console.error('Failed to fetch calendar list:', e);
+    return [{ id: 'primary', summary: 'メインカレンダー', primary: true }];
+  }
+}
+
+/**
+ * 指定期間のGoogleカレンダー予定を取得する（複数カレンダー対応）
  */
 export async function fetchCalendarEvents(
   accessToken: string,
   timeMin: Date,
-  timeMax: Date
+  timeMax: Date,
+  calendarId: string = 'primary'
 ): Promise<RawCalendarEvent[]> {
-  const url = new URL('https://www.googleapis.com/calendar/v3/calendars/primary/events');
+  const url = new URL(
+    `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(calendarId)}/events`
+  );
   url.searchParams.set('timeMin', timeMin.toISOString());
   url.searchParams.set('timeMax', timeMax.toISOString());
   url.searchParams.set('singleEvents', 'true');
@@ -118,30 +149,60 @@ export async function fetchCalendarEvents(
 
   if (!res.ok) {
     const errorText = await res.text();
-    throw new Error(`Google Calendar APIエラー (${res.status}): ${errorText}`);
+    console.warn(`Calendar API warning for ${calendarId}:`, errorText);
+    return [];
   }
 
   const data = await res.json();
   const items = data.items || [];
 
-  return items.map((item: any) => {
-    const isAllDay = !!item.start.date;
-    const start = isAllDay
-      ? new Date(`${item.start.date}T00:00:00`)
-      : new Date(item.start.dateTime);
-    const end = item.end
-      ? isAllDay
-        ? new Date(`${item.end.date}T00:00:00`)
-        : new Date(item.end.dateTime)
-      : undefined;
+  return items
+    .filter((item: any) => item.status !== 'cancelled')
+    .map((item: any) => {
+      const isAllDay = !!item.start.date;
+      const start = isAllDay
+        ? new Date(`${item.start.date}T00:00:00`)
+        : new Date(item.start.dateTime);
+      const end = item.end
+        ? isAllDay
+          ? new Date(`${item.end.date}T00:00:00`)
+          : new Date(item.end.dateTime)
+        : undefined;
 
-    return {
-      summary: item.summary || '(無題の予定)',
-      start,
-      end,
-      isAllDay,
-      location: item.location,
-      description: item.description,
-    };
-  });
+      return {
+        summary: item.summary || '(無題の予定)',
+        start,
+        end,
+        isAllDay,
+        location: item.location,
+        description: item.description,
+      };
+    });
+}
+
+/**
+ * 全カレンダーから指定期間の予定をまとめて取得する
+ */
+export async function fetchAllCalendarEvents(
+  accessToken: string,
+  timeMin: Date,
+  timeMax: Date
+): Promise<{ events: RawCalendarEvent[]; calendarCount: number }> {
+  const calendars = await fetchCalendarList(accessToken);
+  const allEvents: RawCalendarEvent[] = [];
+  const seenKeys = new Set<string>();
+
+  for (const cal of calendars) {
+    const events = await fetchCalendarEvents(accessToken, timeMin, timeMax, cal.id);
+    for (const ev of events) {
+      const key = `${ev.summary}_${ev.start.getTime()}_${ev.location || ''}`;
+      if (!seenKeys.has(key)) {
+        seenKeys.add(key);
+        allEvents.push(ev);
+      }
+    }
+  }
+
+  allEvents.sort((a, b) => a.start.getTime() - b.start.getTime());
+  return { events: allEvents, calendarCount: calendars.length };
 }

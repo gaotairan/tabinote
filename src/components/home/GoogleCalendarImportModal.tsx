@@ -18,7 +18,7 @@ import type { RawCalendarEvent } from '../../services/icsParser';
 import { generateTripFromEvents } from '../../services/tripGenerator';
 import {
   getGoogleAccessToken,
-  fetchCalendarEvents,
+  fetchAllCalendarEvents,
 } from '../../services/googleCalendar';
 import { storageService } from '../../services/storage';
 import type { Trip } from '../../types/trip';
@@ -223,9 +223,11 @@ END:VCALENDAR`;
       const minDate = new Date(`${oauthStartDate}T00:00:00`);
       const maxDate = new Date(`${oauthEndDate}T23:59:59`);
 
-      const events = await fetchCalendarEvents(token, minDate, maxDate);
+      const { events, calendarCount } = await fetchAllCalendarEvents(token, minDate, maxDate);
       if (events.length === 0) {
-        setError(`指定期間（${oauthStartDate} 〜 ${oauthEndDate}）に予定が見つかりませんでした。`);
+        setError(
+          `指定期間（${oauthStartDate} 〜 ${oauthEndDate}）に予定が見つかりませんでした（${calendarCount}個のカレンダーを検索）。\nGoogleカレンダーに入力されている予定の「日付（西暦含む）」が上記期間内に入っているかご確認ください。`
+        );
         setLoading(false);
         return;
       }
