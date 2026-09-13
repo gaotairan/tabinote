@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import type { Trip } from './types/trip';
 import { storageService } from './services/storage';
+import { shareService } from './services/shareService';
 import { Header } from './components/layout/Header';
 import { Navigation } from './components/layout/Navigation';
 import type { TabType } from './components/layout/Navigation';
@@ -13,17 +14,59 @@ import { PackingTab } from './components/trip/PackingTab';
 import { SouvenirTab } from './components/trip/SouvenirTab';
 import { ExpenseTab } from './components/trip/ExpenseTab';
 import { ShareModal } from './components/trip/ShareModal';
+import { Sparkles, X, AlertTriangle } from 'lucide-react';
 import './App.css';
 
 export const App: React.FC = () => {
-  const [trips, setTrips] = useState<Trip[]>(() => storageService.getTrips());
+  // 共有データ（#share=...）からの初回読み込み判定
+  const initialShareResult = (() => {
+    if (typeof window === 'undefined') return { trip: null, failed: false };
+    const hash = window.location.hash.replace('#', '');
+    if (hash.startsWith('share=') || hash.includes('share=')) {
+      const imported = shareService.parseShareDataFromUrl(window.location.href);
+      if (imported) {
+        storageService.saveTrip(imported);
+        return { trip: imported, failed: false };
+      }
+      return { trip: null, failed: true };
+    }
+    return { trip: null, failed: false };
+  })();
+
+  const initialShareTrip = initialShareResult.trip;
+
+  const [trips, setTrips] = useState<Trip[]>(() => {
+    const loaded = storageService.getTrips();
+    if (initialShareTrip && !loaded.some((t) => t.id === initialShareTrip.id)) {
+      return [initialShareTrip, ...loaded];
+    }
+    return loaded;
+  });
+
   const [activeTripId, setActiveTripId] = useState<string | null>(() => {
+    if (initialShareTrip) return initialShareTrip.id;
     // URLハッシュがある場合はそのIDを優先
     const hash = window.location.hash.replace('#', '');
-    if (hash) return hash;
+    if (hash && !hash.startsWith('share=')) return hash;
     return storageService.getActiveTripId();
   });
+
   const [activeTab, setActiveTab] = useState<TabType>('overview');
+  const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(() => {
+    if (initialShareTrip) {
+      return {
+        message: `🎉 旅のしおり「${initialShareTrip.title}」を読み込み、端末に保存しました！`,
+        type: 'success',
+      };
+    }
+    if (initialShareResult.failed) {
+      return {
+        message: '⚠️ 共有しおりデータの読み込みに失敗しました。URLが途中で途切れていないかご確認ください。',
+        type: 'error',
+      };
+    }
+    return null;
+  });
 
   // モーダル管理
   const [isCreateOpen, setIsCreateOpen] = useState(false);
@@ -34,13 +77,59 @@ export const App: React.FC = () => {
   // URLハッシュと同期
   useEffect(() => {
     if (activeTripId) {
-      window.location.hash = activeTripId;
+      if (window.location.hash.startsWith('#share=')) {
+        window.history.replaceState(null, '', window.location.pathname + '#' + activeTripId);
+      } else {
+        window.location.hash = activeTripId;
+      }
       storageService.setActiveTripId(activeTripId);
     } else {
-      window.location.hash = '';
+      if (!window.location.hash.startsWith('#share=')) {
+        window.location.hash = '';
+      }
       storageService.setActiveTripId(null);
     }
   }, [activeTripId]);
+
+  // ブラウザ起動中の共有リンク読み込み（hashchange検知）
+  useEffect(() => {
+    const handleHashChange = () => {
+      const hash = window.location.hash.replace('#', '');
+      if (hash.startsWith('share=') || hash.includes('share=')) {
+        const imported = shareService.parseShareDataFromUrl(window.location.href);
+        if (imported) {
+          storageService.saveTrip(imported);
+          setTrips(storageService.getTrips());
+          setActiveTripId(imported.id);
+          setActiveTab('overview');
+          window.history.replaceState(null, '', window.location.pathname + '#' + imported.id);
+          setToast({
+            message: `🎉 旅のしおり「${imported.title}」を読み込み、端末に保存しました！`,
+            type: 'success',
+          });
+        } else {
+          setToast({
+            message: '⚠️ 共有しおりデータの読み込みに失敗しました。URLが途中で途切れていないかご確認ください。',
+            type: 'error',
+          });
+        }
+      }
+    };
+
+    window.addEventListener('hashchange', handleHashChange);
+    return () => window.removeEventListener('hashchange', handleHashChange);
+  }, []);
+
+  // トースト自動非表示タイマー（成功は5秒、エラーは7秒後）
+  useEffect(() => {
+    if (toast) {
+      const duration = toast.type === 'error' ? 7000 : 5000;
+      const timer = setTimeout(() => {
+        setToast(null);
+      }, duration);
+      return () => clearTimeout(timer);
+    }
+  }, [toast]);
 
   const activeTrip = trips.find((t) => t.id === activeTripId) || null;
 
@@ -96,6 +185,30 @@ export const App: React.FC = () => {
         onOpenCalendarImport={() => setIsCalendarImportOpen(true)}
         onOpenShare={() => setIsShareOpen(true)}
       />
+
+      {/* 共有読み込み完了 / エラートースト */}
+      {toast && (
+        <aside
+          className={`shared-toast-banner slide-down ${toast.type === 'error' ? 'error' : ''}`}
+          aria-label="通知"
+        >
+          <div className="toast-content">
+            {toast.type === 'error' ? (
+              <AlertTriangle size={18} className="toast-icon" />
+            ) : (
+              <Sparkles size={18} className="toast-icon" />
+            )}
+            <span className="toast-text">{toast.message}</span>
+          </div>
+          <button
+            className="toast-close-btn"
+            onClick={() => setToast(null)}
+            aria-label="閉じる"
+          >
+            <X size={16} />
+          </button>
+        </aside>
+      )}
 
       {activeTrip && (
         <Navigation

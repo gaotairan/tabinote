@@ -1,55 +1,186 @@
 .share-modal-content {
   display: flex;
   flex-direction: column;
-  gap: 20px;
+  gap: 16px;
 }
 
-.qr-section {
-  display: flex;
-  align-items: center;
-  gap: 20px;
-  background: var(--bg-main);
-  padding: 16px;
-  border-radius: var(--radius-lg);
-  border: 1px solid var(--border-color);
-}
-
-.qr-box {
-  background: #ffffff;
-  padding: 12px;
-  border-radius: var(--radius-md);
-  box-shadow: var(--shadow-sm);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-}
-
-.qr-info {
+.qr-section-centered {
   display: flex;
   flex-direction: column;
+  align-items: center;
+  gap: 14px;
+  background: var(--bg-main);
+  padding: 18px 16px;
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--border-color);
+  text-align: center;
+}
+
+.qr-box-large {
+  background: #ffffff;
+  padding: 14px;
+  border-radius: var(--radius-lg);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  border: 1px solid rgba(0, 0, 0, 0.05);
+}
+
+.qr-box-large:hover {
+  transform: scale(1.02);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+}
+
+.qr-zoom-hint {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-top: 8px;
+  font-size: 0.72rem;
+  color: var(--text-tertiary);
+  user-select: none;
+}
+
+.qr-info-centered {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
   gap: 6px;
+  max-width: 440px;
 }
 
 .qr-title-row {
   display: flex;
   align-items: center;
+  justify-content: center;
   gap: 6px;
   color: var(--primary);
 }
 
 .qr-title-row h4 {
-  font-size: 0.95rem;
+  font-size: 1rem;
   font-weight: 700;
   color: var(--text-main);
 }
 
 .qr-desc {
-  font-size: 0.8rem;
+  font-size: 0.84rem;
   color: var(--text-secondary);
   line-height: 1.5;
 }
 
+.qr-features-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--primary);
+  background: rgba(37, 99, 235, 0.08);
+  padding: 4px 10px;
+  border-radius: 999px;
+  margin-top: 2px;
+}
+
+/* ローカル環境ヒント ＆ 切り替えボックス */
+.share-localhost-box {
+  background: #fffbeb;
+  border: 1px solid #fde68a;
+  border-radius: var(--radius-md);
+  padding: 12px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.share-localhost-header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: #b45309;
+}
+
+.share-localhost-header .hint-icon {
+  flex-shrink: 0;
+}
+
+.share-localhost-header .hint-title {
+  font-size: 0.85rem;
+  font-weight: 700;
+}
+
+.share-localhost-box .hint-text {
+  font-size: 0.78rem;
+  color: #92400e;
+  line-height: 1.45;
+  margin: 0;
+}
+
+.share-localhost-box .hint-text code {
+  background: rgba(0, 0, 0, 0.06);
+  padding: 1px 4px;
+  border-radius: 4px;
+  font-family: monospace;
+}
+
+.url-mode-selector {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.mode-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 6px 10px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  border-radius: var(--radius-sm);
+  border: 1px solid #d97706;
+  background: #ffffff;
+  color: #92400e;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.mode-btn:hover {
+  background: #fef3c7;
+}
+
+.mode-btn.active {
+  background: #d97706;
+  color: #ffffff;
+  border-color: #b45309;
+}
+
+.custom-ip-input-row {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.custom-ip-input-row .form-input {
+  font-size: 0.82rem;
+  padding: 6px 10px;
+}
+
+.custom-ip-input-row .ip-help {
+  font-size: 0.72rem;
+  color: #b45309;
+}
+
+.custom-ip-input-row .ip-help code {
+  background: rgba(0, 0, 0, 0.06);
+  padding: 1px 3px;
+  border-radius: 3px;
+}
+
+/* アクション・リンクコピー */
 .share-action-box {
   display: flex;
   flex-direction: column;
@@ -67,15 +198,25 @@
   gap: 8px;
 }
 
+.share-native-btn {
+  width: 100%;
+  justify-content: center;
+  padding: 10px;
+  background: linear-gradient(135deg, var(--primary), #1d4ed8);
+  font-size: 0.88rem;
+}
+
 .share-buttons-row {
   display: flex;
   gap: 10px;
 }
 
 @media (max-width: 640px) {
-  .qr-section {
+  .qr-box-large {
+    padding: 10px;
+  }
+  .url-mode-selector {
     flex-direction: column;
-    text-align: center;
   }
   .share-buttons-row {
     flex-direction: column;
