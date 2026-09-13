@@ -102,8 +102,10 @@ export const ShareModal: React.FC<ShareModalProps> = ({
     (window.location.hostname === 'localhost' ||
       window.location.hostname === '127.0.0.1');
 
-  // ローカル環境でのベースURLモード（'local' | 'github_pages' | 'custom_ip'）
-  const [urlMode, setUrlMode] = useState<'current' | 'github_pages' | 'custom_ip'>('current');
+  // ローカル環境でのベースURLモード（デフォルトはスマホや別端末から即アクセスできるGitHub Pages公開URL）
+  const [urlMode, setUrlMode] = useState<'current' | 'github_pages' | 'custom_ip'>(
+    isLocalhost ? 'github_pages' : 'current'
+  );
   const [customIp, setCustomIp] = useState('');
 
   // 共有用ベースURLの決定
@@ -141,15 +143,12 @@ export const ShareModal: React.FC<ShareModalProps> = ({
     }
   }, [trip, effectiveOrigin, shareUrl]);
 
-  // QRコードのデータが上限（2,500文字）を超えているか判定
-  const isQrTooLarge = qrCodeInfo.url.length > 2500;
-
   // Web Share API（スマホのLINEやメッセージなど）対応判定
   const canNativeShare =
     typeof navigator !== 'undefined' && typeof navigator.share === 'function';
 
-  // データ長に応じた誤り訂正レベル（データが多い場合はLにしてセル密度を最小化）
-  const qrLevel = qrCodeInfo.url.length > 900 ? 'L' : 'M';
+  // データ長に応じた誤り訂正レベル（Lにしてセル密度を最小化し、スマホカメラでの高速読み取りを担保）
+  const qrLevel = 'L';
 
   const handleCopyUrl = async () => {
     try {
@@ -312,31 +311,19 @@ export const ShareModal: React.FC<ShareModalProps> = ({
         <div className="qr-section-centered">
           <div
             className="qr-box-large"
-            onClick={() => !isQrTooLarge && setIsZoomed(!isZoomed)}
-            title={isQrTooLarge ? undefined : 'クリックして拡大 / 縮小'}
+            onClick={() => setIsZoomed(!isZoomed)}
+            title="クリックして拡大 / 縮小"
           >
-            {isQrTooLarge ? (
-              <div className="qr-too-large-fallback">
-                <AlertCircle size={36} color="var(--primary)" />
-                <p className="fallback-title">情報量が多いためQRコードを省略しています</p>
-                <p className="fallback-desc">
-                  日程やアイテム数が非常に多いため、下の「URLコピー」または「メール送信」をご利用ください。
-                </p>
-              </div>
-            ) : (
-              <SafeQrCode
-                value={qrCodeInfo.url}
-                size={isZoomed ? 300 : 230}
-                level={qrLevel}
-                marginSize={2}
-              />
-            )}
-            {!isQrTooLarge && (
-              <div className="qr-zoom-hint">
-                <Maximize2 size={13} />
-                <span>{isZoomed ? '標準サイズに戻す' : 'クリックで特大表示'}</span>
-              </div>
-            )}
+            <SafeQrCode
+              value={qrCodeInfo.url}
+              size={isZoomed ? 300 : 220}
+              level={qrLevel}
+              marginSize={2}
+            />
+            <div className="qr-zoom-hint">
+              <Maximize2 size={13} />
+              <span>{isZoomed ? '標準サイズに戻す' : 'クリックで特大表示'}</span>
+            </div>
           </div>
 
           <div className="qr-info-centered">
@@ -432,6 +419,9 @@ export const ShareModal: React.FC<ShareModalProps> = ({
               <span>{copiedUrl ? 'コピー完了' : 'URLコピー'}</span>
             </button>
           </div>
+          <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '6px', marginBottom: 0 }}>
+            ※このURLをLINEやメール等で送ると、相手の端末でしおりがそのまま開き、端末に自動保存されます。
+          </p>
         </div>
 
         {/* 参加メンバーにメールでしおりを送信セクション */}

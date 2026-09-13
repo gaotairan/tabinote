@@ -70,19 +70,29 @@ class AppErrorBoundary extends React.Component<
 }
 
 export const App: React.FC = () => {
-  // 共有データ（#share=...）からの初回読み込み判定
+  // 共有データ（#share=... または ?share=...）からの初回読み込み判定
   const initialShareResult = (() => {
-    if (typeof window === 'undefined') return { trip: null, failed: false };
-    const hash = window.location.hash.replace('#', '');
-    if (hash.startsWith('share=') || hash.includes('share=')) {
-      const imported = shareService.parseShareDataFromUrl(window.location.href);
+    if (typeof window === 'undefined') return { trip: null, failed: false, missingId: null };
+    const fullHref = window.location.href;
+    if (fullHref.includes('share=')) {
+      const imported = shareService.parseShareDataFromUrl(fullHref);
       if (imported) {
         storageService.saveTrip(imported);
-        return { trip: imported, failed: false };
+        return { trip: imported, failed: false, missingId: null };
       }
-      return { trip: null, failed: true };
+      return { trip: null, failed: true, missingId: null };
     }
-    return { trip: null, failed: false };
+
+    // もし#trip-xxxのID直接指定でアクセスされたが端末に存在しない場合を検出
+    const hash = window.location.hash.replace('#', '').trim();
+    if (hash && !hash.startsWith('share=')) {
+      const existing = storageService.getTripById(hash);
+      if (!existing) {
+        return { trip: null, failed: false, missingId: hash };
+      }
+    }
+
+    return { trip: null, failed: false, missingId: null };
   })();
 
   const initialShareTrip = initialShareResult.trip;
@@ -97,9 +107,12 @@ export const App: React.FC = () => {
 
   const [activeTripId, setActiveTripId] = useState<string | null>(() => {
     if (initialShareTrip) return initialShareTrip.id;
-    // URLハッシュがある場合はそのIDを優先
-    const hash = window.location.hash.replace('#', '');
-    if (hash && !hash.startsWith('share=')) return hash;
+    // URLハッシュがある場合はそのIDを優先（ただし端末内に存在する場合のみ）
+    const hash = window.location.hash.replace('#', '').trim();
+    if (hash && !hash.startsWith('share=')) {
+      const exists = storageService.getTripById(hash);
+      if (exists) return hash;
+    }
     return storageService.getActiveTripId();
   });
 
@@ -107,13 +120,19 @@ export const App: React.FC = () => {
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(() => {
     if (initialShareTrip) {
       return {
-        message: `🎉 旅のしおり「${initialShareTrip.title}」を読み込み、端末に保存しました！`,
+        message: `🎉 旅のしおり「${initialShareTrip.title}」を読み込み、端末に自動保存しました！`,
         type: 'success',
       };
     }
     if (initialShareResult.failed) {
       return {
         message: '⚠️ 共有しおりデータの読み込みに失敗しました。URLが途中で途切れていないかご確認ください。',
+        type: 'error',
+      };
+    }
+    if (initialShareResult.missingId) {
+      return {
+        message: `⚠️ 指定されたしおりは、この端末にまだ保存されていません。作成者に「共有リンク」または「QRコード」を発行してもらってください。`,
         type: 'error',
       };
     }
@@ -147,9 +166,9 @@ export const App: React.FC = () => {
   // ブラウザ起動中の共有リンク読み込み（hashchange検知）
   useEffect(() => {
     const handleHashChange = () => {
-      const hash = window.location.hash.replace('#', '');
-      if (hash.startsWith('share=') || hash.includes('share=')) {
-        const imported = shareService.parseShareDataFromUrl(window.location.href);
+      const fullHref = window.location.href;
+      if (fullHref.includes('share=')) {
+        const imported = shareService.parseShareDataFromUrl(fullHref);
         if (imported) {
           storageService.saveTrip(imported);
           setTrips(storageService.getTrips());

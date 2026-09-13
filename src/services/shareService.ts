@@ -54,10 +54,19 @@ function u8ToBase64Url(u8: Uint8Array): string {
 }
 
 /**
- * Base64URL文字列をUint8Arrayに変換（ブラウザ互換）
+ * Base64URL文字列をUint8Arrayに変換（ブラウザ互換・空白やエンコード耐性強化）
  */
 function base64UrlToU8(b64url: string): Uint8Array {
-  let b64 = b64url.replace(/-/g, '+').replace(/_/g, '/');
+  // 空白・改行・URLエスケープを徹底サニタイズ
+  let cleaned = (b64url || '').trim().replace(/\s+/g, '');
+  if (cleaned.includes('%')) {
+    try {
+      cleaned = decodeURIComponent(cleaned);
+    } catch {
+      // ignore
+    }
+  }
+  let b64 = cleaned.replace(/-/g, '+').replace(/_/g, '/');
   while (b64.length % 4 !== 0) {
     b64 += '=';
   }
@@ -71,28 +80,36 @@ function base64UrlToU8(b64url: string): Uint8Array {
 }
 
 /**
- * スマホカメラでの高速・確実なQRコード読み取り用に最適化された軽量配列に圧縮
- * （主要スケジュール＋基本情報に特化し、1,000〜1,400文字前後に圧縮）
+ * カバー画像がプリセットに一致するか判定し短縮記号（@0〜@7）を返す
+ * 外部URLやBase64画像の場合は、URL破損やQRコード上限を避けるためデフォルトプリセット(@0)に安全フォールバック
  */
-function packTripForQr(t: Trip): unknown[] {
-  let cover = t.coverImage || '';
+function resolveCoverForShare(coverUrl?: string): string {
+  if (!coverUrl) return '@0';
   for (let i = 0; i < PRESET_COVERS.length; i++) {
     const p = PRESET_COVERS[i];
-    if (cover === p.id || cover === p.url || (p.url && cover.includes(p.url.slice(0, 40)))) {
-      cover = '@' + i;
-      break;
+    if (coverUrl === p.id || coverUrl === p.url || (p.url && coverUrl.includes(p.url.slice(0, 40)))) {
+      return '@' + i;
     }
   }
+  // カスタムアップロード画像（data:image/...）や長大な外部URLはURL/QRコードの破損を防ぐため@0に安全フォールバック
+  return '@0';
+}
 
+/**
+ * スマホカメラでの高速・確実なQRコード読み取り用に最適化された軽量配列に圧縮
+ * （主要スケジュール＋基本情報に特化し、確実に400〜900文字前後に圧縮）
+ */
+function packTripForQr(t: Trip): unknown[] {
+  // カバー画像は必ずプリセット（@0〜@7）に解決し、Base64画像を完全排除
+  const cover = resolveCoverForShare(t.coverImage);
+
+  // メンバーアバターもBase64を排除（プリセットのみ*0〜、それ以外は空文字＝イニシャル色付き丸アイコン）
   const members = t.members?.map((m) => {
-    let av = m.avatarUrl || '';
-    if (av) {
-      const pIdx = PRESET_AVATARS.findIndex((p) => p.url === av);
+    let av = '';
+    if (m.avatarUrl) {
+      const pIdx = PRESET_AVATARS.findIndex((p) => p.url === m.avatarUrl);
       if (pIdx >= 0) {
         av = '*' + pIdx;
-      } else if (av.startsWith('data:') && av.length > 12000) {
-        // 過去の極大Base64（12KB超）のみQRコードの物理制限を超えないよう退避
-        av = '';
       }
     }
     return [m.name, m.avatarColor, m.role || '', av];
@@ -107,7 +124,7 @@ function packTripForQr(t: Trip): unknown[] {
       it.title,
       CATS.indexOf(it.category),
       it.location || '',
-      it.memo || '',
+      it.memo ? it.memo.slice(0, 80) : '', // QRコードのセル密度を抑えるためメモを適度な長さに安全制限
       it.endTime || '',
       it.transportType ? TRANS.indexOf(it.transportType) : -1,
       it.cost || 0,
@@ -124,7 +141,7 @@ function packTripForQr(t: Trip): unknown[] {
     t.themeColor || '#2563eb',
     t.timeZoneOffset ?? 0,
     t.timeZoneName || '',
-    t.memo || '',
+    t.memo ? t.memo.slice(0, 150) : '',
     members,
     days,
   ];
@@ -134,25 +151,19 @@ function packTripForQr(t: Trip): unknown[] {
  * しおりデータをQRコード・URL共有用に最適化されたコンパクト配列に圧縮
  */
 function packTrip(t: Trip): unknown[] {
-  // プリセットカバーの短縮（@0 〜 @7）
-  let cover = t.coverImage || '';
-  for (let i = 0; i < PRESET_COVERS.length; i++) {
-    const p = PRESET_COVERS[i];
-    if (cover === p.id || cover === p.url || (p.url && cover.includes(p.url.slice(0, 40)))) {
-      cover = '@' + i;
-      break;
-    }
-  }
+  // カバー画像はプリセット短縮（@0〜@7）、カスタム画像の場合はURL破損防止のため安全フォールバック
+  const cover = resolveCoverForShare(t.coverImage);
 
-  // メンバーアバターの短縮（プリセットは*0〜、Base64や外部画像URLも100%保持）
+  // メンバーアバター（プリセットは*0〜、Base64等の長大画像はURL破損を防ぐため除外してイニシャル表示にフォールバック）
   const membersPacked = t.members?.map((m) => {
-    let av = m.avatarUrl || '';
-    if (av) {
-      const pIdx = PRESET_AVATARS.findIndex((p) => p.url === av);
+    let av = '';
+    if (m.avatarUrl) {
+      const pIdx = PRESET_AVATARS.findIndex((p) => p.url === m.avatarUrl);
       if (pIdx >= 0) {
         av = '*' + pIdx;
+      } else if (!m.avatarUrl.startsWith('data:')) {
+        av = m.avatarUrl; // 短い外部URLなら保持
       }
-      // Base64画像や外部URLはそのまま保持！消去しない
     }
     return [m.id, m.name, m.avatarColor, m.role || '', m.email || '', av];
   }) || [];
@@ -511,14 +522,15 @@ export const shareService = {
 
   /**
    * QRコード生成用URLを取得
-   * （完全版URLが2,200文字以下の場合は完全版、超える場合は主要スケジュール軽量版を自動生成）
+   * （スマホカメラでの高速・高認識率読み取りのため、1,200文字以下なら完全版、超える場合は主要スケジュール軽量版を自動生成）
    */
   generateQrCodeUrl(trip: Trip, customOrigin?: string): { url: string; isLightweight: boolean } {
     const fullUrl = this.generateShareUrl(trip, customOrigin);
-    if (fullUrl.length <= 2200) {
+    // 1,200文字以下なら完全版URLのままQRコード化（スマホカメラで即座に読める快適サイズ）
+    if (fullUrl.length <= 1200) {
       return { url: fullUrl, isLightweight: false };
     }
-    // 2,200文字を超える場合はQR専用軽量ペイロードを生成
+    // 1,200文字を超える場合はQR専用軽量ペイロード（全日程・時間・場所・時差に特化）を生成
     try {
       const packed = packTripForQr(trip);
       const json = JSON.stringify(packed);
@@ -542,11 +554,12 @@ export const shareService = {
    */
   parseShareDataFromUrl(urlOrHash: string): Trip | null {
     try {
-      const raw = urlOrHash || '';
+      const raw = (urlOrHash || '').trim();
       let sharePayload = '';
 
       if (raw.includes('share=')) {
         const afterPrefix = raw.slice(raw.indexOf('share=') + 'share='.length);
+        // 末尾のクエリ・ハッシュ・空白・改行などを切り離す
         sharePayload = afterPrefix.split(/[&#\s?]/)[0];
       } else if (raw.includes('#')) {
         sharePayload = raw.split('#')[1] || '';
@@ -554,11 +567,16 @@ export const shareService = {
         sharePayload = raw;
       }
 
+      // 末尾スラッシュや記号・空白を除去
+      sharePayload = sharePayload.replace(/[/\\'">\s)]+$/, '').replace(/^[/\\'"<\s(]+/, '');
+
       if (!sharePayload) return null;
 
       // QRリーダーやブラウザによるURLエスケープ（%2D, %5F, %2B等）をデコード
       try {
-        sharePayload = decodeURIComponent(sharePayload);
+        if (sharePayload.includes('%')) {
+          sharePayload = decodeURIComponent(sharePayload);
+        }
       } catch {
         // デコード不能ならそのまま
       }
