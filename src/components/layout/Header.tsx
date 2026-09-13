@@ -1,10 +1,12 @@
 import React from 'react';
-import { Compass, Plus, Calendar, Share2, ArrowLeft, Printer } from 'lucide-react';
+import { Compass, Plus, Calendar, Share2, ArrowLeft, Printer, Cloud } from 'lucide-react';
 import type { Trip } from '../../types/trip';
 import './Header.css';
 
 interface HeaderProps {
   activeTrip: Trip | null;
+  isCloudConnected: boolean;
+  onOpenCloudSync: () => void;
   onBackToHome: () => void;
   onOpenCreate: () => void;
   onOpenCalendarImport: () => void;
@@ -15,6 +17,8 @@ interface HeaderProps {
 
 export const Header: React.FC<HeaderProps> = ({
   activeTrip,
+  isCloudConnected,
+  onOpenCloudSync,
   onBackToHome,
   onOpenCreate,
   onOpenCalendarImport,
@@ -57,6 +61,30 @@ export const Header: React.FC<HeaderProps> = ({
         )}
 
         <div className="header-actions">
+          {/* クラウド同期ステータスバッジ */}
+          <button
+            type="button"
+            className={`cloud-sync-header-badge ${isCloudConnected ? 'connected' : 'disconnected'}`}
+            onClick={onOpenCloudSync}
+            title={
+              isCloudConnected
+                ? '☁️ クラウド常時同期中（クリックして詳細設定）'
+                : '☁️ クラウド未設定（クリックして常時同期を設定）'
+            }
+          >
+            {isCloudConnected ? (
+              <>
+                <span className="cloud-sync-pulse-dot" />
+                <span>常時同期中</span>
+              </>
+            ) : (
+              <>
+                <Cloud size={14} />
+                <span>クラウド設定</span>
+              </>
+            )}
+          </button>
+
           {activeTrip ? (
             <>
               {onOpenPrint && (

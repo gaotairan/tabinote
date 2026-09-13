@@ -1,0 +1,15 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // 旅のしおりコレクション
+    // リンクやQRコードを共有されたメンバー全員で共同編集可能
+    match /trips/{tripId} {
+      allow read, write: if true;
+    }
+
+    // 接続テスト（ヘルスチェック）用
+    match /_healthcheck_/{docId} {
+      allow read, write: if true;
+    }
+  }
+}

@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react';
 import type { Trip } from './types/trip';
 import { storageService } from './services/storage';
 import { shareService } from './services/shareService';
+import { firebaseService } from './services/firebase';
+import { firestoreSync } from './services/firestoreSync';
 import { Header } from './components/layout/Header';
 import { Navigation } from './components/layout/Navigation';
 import type { TabType } from './components/layout/Navigation';
@@ -15,6 +17,7 @@ import { SouvenirTab } from './components/trip/SouvenirTab';
 import { ExpenseTab } from './components/trip/ExpenseTab';
 import { ShareModal } from './components/trip/ShareModal';
 import { PrintPreviewModal } from './components/trip/PrintPreviewModal';
+import { CloudSyncModal } from './components/common/CloudSyncModal';
 import { Sparkles, X, AlertTriangle } from 'lucide-react';
 import './App.css';
 
@@ -139,12 +142,29 @@ export const App: React.FC = () => {
     return null;
   });
 
+  // クラウド常時同期管理
+  const [isCloudConnected, setIsCloudConnected] = useState(() => firebaseService.isConfigured());
+  const [isCloudSyncOpen, setIsCloudSyncOpen] = useState(false);
+
   // モーダル管理
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [isEditOpen, setIsEditOpen] = useState(false);
   const [isCalendarImportOpen, setIsCalendarImportOpen] = useState(false);
   const [isShareOpen, setIsShareOpen] = useState(false);
   const [isPrintOpen, setIsPrintOpen] = useState(false);
+
+  // クラウド同期状態が変化した際の自動初期化
+  const handleCloudConfigChanged = () => {
+    const configured = firebaseService.isConfigured();
+    setIsCloudConnected(configured);
+    if (configured && activeTrip) {
+      firestoreSync.saveTripToCloud(activeTrip);
+      setToast({
+        message: '☁️ クラウド常時自動同期が有効化されました！',
+        type: 'success',
+      });
+    }
+  };
 
   // URLハッシュと同期
   useEffect(() => {
@@ -163,14 +183,63 @@ export const App: React.FC = () => {
     }
   }, [activeTripId]);
 
+  // クラウドからの初回または未所持しおり自動フェッチ
+  useEffect(() => {
+    if (isCloudConnected && initialShareResult.missingId) {
+      const missingId = initialShareResult.missingId;
+      firestoreSync.fetchTripFromCloud(missingId).then((remoteTrip) => {
+        if (remoteTrip) {
+          storageService.saveTrip(remoteTrip);
+          setTrips(storageService.getTrips());
+          setActiveTripId(remoteTrip.id);
+          setActiveTab('overview');
+          setToast({
+            message: `🎉 クラウドからしおり「${remoteTrip.title}」を読み込みました！`,
+            type: 'success',
+          });
+        }
+      });
+    }
+  }, [isCloudConnected, initialShareResult.missingId]);
+
+  // アクティブなしおりのリアルタイム自動同期（他端末での編集を即時受信）
+  useEffect(() => {
+    if (!isCloudConnected || !activeTripId) return;
+
+    const unsubscribe = firestoreSync.subscribeTrip(
+      activeTripId,
+      (remoteTrip) => {
+        // リモートで更新されたデータを受け取ったら、ローカルstorageとstateを更新
+        storageService.saveTrip(remoteTrip);
+        setTrips((prevTrips) => {
+          const idx = prevTrips.findIndex((t) => t.id === remoteTrip.id);
+          if (idx >= 0) {
+            const updated = [...prevTrips];
+            updated[idx] = remoteTrip;
+            return updated;
+          }
+          return [remoteTrip, ...prevTrips];
+        });
+      },
+      (err) => {
+        console.warn('Realtime sync subscription warning:', err);
+      }
+    );
+
+    return () => unsubscribe();
+  }, [activeTripId, isCloudConnected]);
+
   // ブラウザ起動中の共有リンク読み込み（hashchange検知）
   useEffect(() => {
-    const handleHashChange = () => {
+    const handleHashChange = async () => {
       const fullHref = window.location.href;
       if (fullHref.includes('share=')) {
         const imported = shareService.parseShareDataFromUrl(fullHref);
         if (imported) {
           storageService.saveTrip(imported);
+          if (isCloudConnected) {
+            firestoreSync.saveTripToCloud(imported);
+          }
           setTrips(storageService.getTrips());
           setActiveTripId(imported.id);
           setActiveTab('overview');
@@ -185,12 +254,29 @@ export const App: React.FC = () => {
             type: 'error',
           });
         }
+      } else {
+        const hash = window.location.hash.replace('#', '').trim();
+        if (hash) {
+          const localTrip = storageService.getTripById(hash);
+          if (localTrip) {
+            setActiveTripId(hash);
+          } else if (isCloudConnected) {
+            // クラウドから取得を試行
+            const remoteTrip = await firestoreSync.fetchTripFromCloud(hash);
+            if (remoteTrip) {
+              storageService.saveTrip(remoteTrip);
+              setTrips(storageService.getTrips());
+              setActiveTripId(remoteTrip.id);
+              setActiveTab('overview');
+            }
+          }
+        }
       }
     };
 
     window.addEventListener('hashchange', handleHashChange);
     return () => window.removeEventListener('hashchange', handleHashChange);
-  }, []);
+  }, [isCloudConnected]);
 
   // トースト自動非表示タイマー（成功は5秒、エラーは7秒後）
   useEffect(() => {
@@ -209,6 +295,9 @@ export const App: React.FC = () => {
   const handleUpdateTrip = (updatedTrip: Trip) => {
     storageService.saveTrip(updatedTrip);
     setTrips(storageService.getTrips());
+    if (isCloudConnected) {
+      firestoreSync.saveTripToCloud(updatedTrip);
+    }
   };
 
   // しおり作成
@@ -217,6 +306,9 @@ export const App: React.FC = () => {
     setTrips(storageService.getTrips());
     setActiveTripId(newTrip.id);
     setActiveTab('overview');
+    if (isCloudConnected) {
+      firestoreSync.saveTripToCloud(newTrip);
+    }
   };
 
   // しおり削除
@@ -225,6 +317,9 @@ export const App: React.FC = () => {
     setTrips(storageService.getTrips());
     if (activeTripId === tripId) {
       setActiveTripId(null);
+    }
+    if (isCloudConnected) {
+      firestoreSync.deleteTripFromCloud(tripId);
     }
   };
 
@@ -249,6 +344,8 @@ export const App: React.FC = () => {
     <div className="app-root">
       <Header
         activeTrip={activeTrip}
+        isCloudConnected={isCloudConnected}
+        onOpenCloudSync={() => setIsCloudSyncOpen(true)}
         onBackToHome={() => {
           setActiveTripId(null);
           setActiveTab('overview');
@@ -382,6 +479,11 @@ export const App: React.FC = () => {
             onClose={() => setIsShareOpen(false)}
             trip={activeTrip}
             onOpenPrint={() => setIsPrintOpen(true)}
+            isCloudConnected={isCloudConnected}
+            onOpenCloudSync={() => {
+              setIsShareOpen(false);
+              setIsCloudSyncOpen(true);
+            }}
           />
         </AppErrorBoundary>
       )}
@@ -396,6 +498,13 @@ export const App: React.FC = () => {
           />
         </AppErrorBoundary>
       )}
+
+      {/* クラウド常時自動同期 設定モーダル */}
+      <CloudSyncModal
+        isOpen={isCloudSyncOpen}
+        onClose={() => setIsCloudSyncOpen(false)}
+        onConfigChanged={handleCloudConfigChanged}
+      />
     </div>
   );
 };

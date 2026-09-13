@@ -31,6 +31,8 @@ interface ShareModalProps {
   onClose: () => void;
   trip: Trip;
   onOpenPrint?: () => void;
+  isCloudConnected?: boolean;
+  onOpenCloudSync?: () => void;
 }
 
 /**
@@ -81,6 +83,8 @@ export const ShareModal: React.FC<ShareModalProps> = ({
   onClose,
   trip,
   onOpenPrint,
+  isCloudConnected = false,
+  onOpenCloudSync,
 }) => {
   const [copiedUrl, setCopiedUrl] = useState(false);
   const [copiedSummary, setCopiedSummary] = useState(false);
@@ -93,8 +97,6 @@ export const ShareModal: React.FC<ShareModalProps> = ({
   );
   const [customEmails, setCustomEmails] = useState<string[]>([]);
   const [newEmailInput, setNewEmailInput] = useState('');
-
-
 
   // ローカル開発環境判定
   const isLocalhost =
@@ -124,7 +126,7 @@ export const ShareModal: React.FC<ShareModalProps> = ({
   }, [urlMode, customIp]);
 
   // しおりデータ全体が内包された完全共有URLを生成（URLコピー・メール・LINE送信用）
-  const shareUrl = useMemo(() => {
+  const snapshotShareUrl = useMemo(() => {
     try {
       return shareService.generateShareUrl(trip, effectiveOrigin);
     } catch (e) {
@@ -133,15 +135,28 @@ export const ShareModal: React.FC<ShareModalProps> = ({
     }
   }, [trip, effectiveOrigin]);
 
+  // クラウド常時自動同期用の超短縮URL（#trip-xxx）
+  const cloudShareUrl = useMemo(() => {
+    const origin = effectiveOrigin ? effectiveOrigin.replace(/\/+$/, '') : window.location.origin;
+    const pathname = window.location.pathname;
+    return `${origin}${pathname}#${trip.id}`;
+  }, [effectiveOrigin, trip.id]);
+
+  // 実際の共有URL（クラウド同期時は短縮URL、未同期時はスナップショットURL）
+  const shareUrl = isCloudConnected ? cloudShareUrl : snapshotShareUrl;
+
   // スマホカメラでの高速・確実な読み取り用に最適化されたQRコード用URL
   const qrCodeInfo = useMemo(() => {
+    if (isCloudConnected) {
+      return { url: cloudShareUrl, isLightweight: false };
+    }
     try {
       return shareService.generateQrCodeUrl(trip, effectiveOrigin);
     } catch (e) {
       console.error('Failed to generate QR code URL:', e);
-      return { url: shareUrl, isLightweight: false };
+      return { url: snapshotShareUrl, isLightweight: false };
     }
-  }, [trip, effectiveOrigin, shareUrl]);
+  }, [isCloudConnected, cloudShareUrl, trip, effectiveOrigin, snapshotShareUrl]);
 
   // Web Share API（スマホのLINEやメッセージなど）対応判定
   const canNativeShare =
@@ -334,15 +349,57 @@ export const ShareModal: React.FC<ShareModalProps> = ({
             <p className="qr-desc">
               QRコードをスマホで読み取ると、このしおりがそのまま開き、端末に<strong>自動保存</strong>されます。ログイン不要・オフラインでも閲覧可能です。
             </p>
-            <div className="qr-features-badge">
-              <Sparkles size={13} />
-              <span>
-                {qrCodeInfo.isLightweight
-                  ? '全日程・時間・場所・時差設定を完全同期'
-                  : '全日程・持ち物リスト・時差設定を完全同期'}
-              </span>
-            </div>
-            {qrCodeInfo.isLightweight && (
+            {isCloudConnected ? (
+              <div
+                className="qr-features-badge"
+                style={{
+                  background: '#dcfce7',
+                  color: '#166534',
+                  border: '1px solid #86efac',
+                  padding: '6px 12px',
+                  borderRadius: '20px',
+                }}
+              >
+                <span
+                  className="cloud-sync-pulse-dot"
+                  style={{ display: 'inline-block', marginRight: '6px' }}
+                />
+                <span>クラウド常時同期中：スマホで編集した内容もPCに即時自動反映されます！</span>
+              </div>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                <div className="qr-features-badge">
+                  <Sparkles size={13} />
+                  <span>
+                    {qrCodeInfo.isLightweight
+                      ? '全日程・時間・場所・時差設定を完全同期'
+                      : '全日程・持ち物リスト・時差設定を完全同期'}
+                  </span>
+                </div>
+                {onOpenCloudSync && (
+                  <button
+                    type="button"
+                    onClick={onOpenCloudSync}
+                    style={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '4px',
+                      fontSize: '0.75rem',
+                      color: '#2563eb',
+                      background: 'none',
+                      border: 'none',
+                      cursor: 'pointer',
+                      padding: '2px 0',
+                      textDecoration: 'underline',
+                      alignSelf: 'flex-start',
+                    }}
+                  >
+                    ☁️ スマホとPCで常時自動同期させたい方はこちら（クラウド設定）
+                  </button>
+                )}
+              </div>
+            )}
+            {!isCloudConnected && qrCodeInfo.isLightweight && (
               <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', margin: 0 }}>
                 ※持ち物やお土産・支出を含む全データは、下の「URLコピー」や「メール送信」で送れます
               </p>
