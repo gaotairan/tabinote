@@ -104,16 +104,19 @@ export const ShareModal: React.FC<ShareModalProps> = ({
     (window.location.hostname === 'localhost' ||
       window.location.hostname === '127.0.0.1');
 
-  // ローカル環境でのベースURLモード（デフォルトはスマホや別端末から即アクセスできるGitHub Pages公開URL）
-  const [urlMode, setUrlMode] = useState<'current' | 'github_pages' | 'custom_ip'>(
-    isLocalhost ? 'github_pages' : 'current'
+  // 本番公開URL（Firebase Hosting）
+  const PRODUCTION_HOSTING_URL = 'https://tabinote-928f9.web.app';
+
+  // ローカル環境でのベースURLモード（デフォルトはスマホから全世界どこでも開ける本番公開URL）
+  const [urlMode, setUrlMode] = useState<'production' | 'custom_ip' | 'current'>(
+    isLocalhost ? 'production' : 'current'
   );
   const [customIp, setCustomIp] = useState('');
 
   // 共有用ベースURLの決定
   const effectiveOrigin = useMemo(() => {
-    if (urlMode === 'github_pages') {
-      return 'https://gaotairan.github.io/tabinote';
+    if (urlMode === 'production') {
+      return PRODUCTION_HOSTING_URL;
     }
     if (urlMode === 'custom_ip' && customIp.trim()) {
       let ip = customIp.trim();
@@ -420,11 +423,11 @@ export const ShareModal: React.FC<ShareModalProps> = ({
             <div className="url-mode-selector">
               <button
                 type="button"
-                className={`mode-btn ${urlMode === 'github_pages' ? 'active' : ''}`}
-                onClick={() => setUrlMode('github_pages')}
+                className={`mode-btn ${urlMode === 'production' ? 'active' : ''}`}
+                onClick={() => setUrlMode('production')}
               >
                 <Globe size={14} />
-                <span>GitHub Pages公開URLで生成（推奨）</span>
+                <span>本番Web公開URL（推奨・4G/5GでもOK）</span>
               </button>
               <button
                 type="button"
