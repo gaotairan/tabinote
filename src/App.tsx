@@ -357,12 +357,14 @@ export const App: React.FC = () => {
 
       {/* 共有モーダル */}
       {activeTrip && isShareOpen && (
-        <ShareModal
-          isOpen={isShareOpen}
-          onClose={() => setIsShareOpen(false)}
-          trip={activeTrip}
-          onOpenPrint={() => setIsPrintOpen(true)}
-        />
+        <AppErrorBoundary onReset={() => setIsShareOpen(false)}>
+          <ShareModal
+            isOpen={isShareOpen}
+            onClose={() => setIsShareOpen(false)}
+            trip={activeTrip}
+            onOpenPrint={() => setIsPrintOpen(true)}
+          />
+        </AppErrorBoundary>
       )}
 
       {/* しおりPDF作成 / 印刷プレビューモーダル */}

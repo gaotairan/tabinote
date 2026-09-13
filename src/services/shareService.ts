@@ -7,6 +7,7 @@ import type {
   ExpenseCategory,
 } from '../types/trip';
 import { PRESET_COVERS } from '../mock/sampleTrip';
+import { PRESET_AVATARS } from '../utils/imageUtils';
 
 const CATS: ScheduleCategory[] = [
   'transport',
@@ -70,6 +71,61 @@ function base64UrlToU8(b64url: string): Uint8Array {
 }
 
 /**
+ * スマホカメラでの高速・確実なQRコード読み取り用に最適化された軽量配列に圧縮
+ * （主要スケジュール＋基本情報に特化し、1,000〜1,400文字前後に圧縮）
+ */
+function packTripForQr(t: Trip): unknown[] {
+  let cover = t.coverImage || '';
+  for (let i = 0; i < PRESET_COVERS.length; i++) {
+    const p = PRESET_COVERS[i];
+    if (cover === p.id || cover === p.url || (p.url && cover.includes(p.url.slice(0, 40)))) {
+      cover = '@' + i;
+      break;
+    }
+  }
+
+  const members = t.members?.map((m) => {
+    let av = m.avatarUrl || '';
+    if (av) {
+      const pIdx = PRESET_AVATARS.findIndex((p) => p.url === av);
+      av = pIdx >= 0 ? '*' + pIdx : '';
+    }
+    return [m.name, m.avatarColor, m.role || '', av];
+  }) || [];
+
+  const days = t.days?.map((d) => [
+    d.dayNumber,
+    d.date,
+    d.title || '',
+    d.items?.map((it) => [
+      it.time,
+      it.title,
+      CATS.indexOf(it.category),
+      it.location || '',
+      it.memo || '',
+      it.endTime || '',
+      it.transportType ? TRANS.indexOf(it.transportType) : -1,
+      it.cost || 0,
+    ]) || [],
+  ]) || [];
+
+  return [
+    'qr', // QR軽量バージョン識別子
+    t.title,
+    t.destination,
+    t.startDate,
+    t.endDate,
+    cover,
+    t.themeColor || '#2563eb',
+    t.timeZoneOffset ?? 0,
+    t.timeZoneName || '',
+    t.memo || '',
+    members,
+    days,
+  ];
+}
+
+/**
  * しおりデータをQRコード・URL共有用に最適化されたコンパクト配列に圧縮
  */
 function packTrip(t: Trip): unknown[] {
@@ -82,6 +138,20 @@ function packTrip(t: Trip): unknown[] {
       break;
     }
   }
+
+  // メンバーアバターの短縮（プリセットは*0〜、Base64はURL肥大化防止のため除外）
+  const membersPacked = t.members?.map((m) => {
+    let av = m.avatarUrl || '';
+    if (av) {
+      const pIdx = PRESET_AVATARS.findIndex((p) => p.url === av);
+      if (pIdx >= 0) {
+        av = '*' + pIdx;
+      } else if (av.startsWith('data:')) {
+        av = '';
+      }
+    }
+    return [m.id, m.name, m.avatarColor, m.role || '', m.email || '', av];
+  }) || [];
 
   return [
     1, // バージョン
@@ -96,7 +166,7 @@ function packTrip(t: Trip): unknown[] {
     t.timeZoneOffset ?? 0,
     t.timeZoneName || '',
     t.memo || '',
-    t.members?.map((m) => [m.id, m.name, m.avatarColor, m.role || '', m.email || '', m.avatarUrl || '']) || [],
+    membersPacked,
     t.days?.map((d) => [
       d.dayNumber,
       d.date,
@@ -158,6 +228,99 @@ function packTrip(t: Trip): unknown[] {
  * コンパクト配列からTripオブジェクトを復元
  */
 function unpackTrip(arr: unknown[]): Trip {
+  // QR軽量バージョンの場合（主要スケジュール＋基本情報）
+  if (Array.isArray(arr) && arr[0] === 'qr') {
+    const [
+      , // 'qr'
+      title,
+      destination,
+      startDate,
+      endDate,
+      cover,
+      themeColor,
+      timeZoneOffset,
+      timeZoneName,
+      memo,
+      members,
+      days,
+    ] = arr as [
+      string,
+      string,
+      string,
+      string,
+      string,
+      string,
+      string,
+      number,
+      string,
+      string,
+      [string, string, string, string?][],
+      [number, string, string, [string, string, number, string, string, string, number, number][]][]
+    ];
+
+    let coverImage = cover;
+    if (typeof cover === 'string' && cover.startsWith('@')) {
+      const idx = parseInt(cover.slice(1), 10);
+      coverImage = PRESET_COVERS[idx]?.url || PRESET_COVERS[0].url;
+    }
+
+    const now = new Date().toISOString();
+
+    return {
+      id: 'trip-' + Date.now(),
+      title: title || '無題のしおり',
+      destination: destination || '',
+      startDate: startDate || '',
+      endDate: endDate || '',
+      coverImage: coverImage || PRESET_COVERS[0].url,
+      themeColor: themeColor || '#2563eb',
+      timeZoneOffset: timeZoneOffset ?? 0,
+      timeZoneName: timeZoneName || undefined,
+      memo: memo || undefined,
+      members: (members || []).map(([name, avatarColor, role, avatarUrl], idx) => {
+        let restoredAvatar = avatarUrl;
+        if (restoredAvatar && restoredAvatar.startsWith('*')) {
+          const pIdx = parseInt(restoredAvatar.slice(1), 10);
+          restoredAvatar = PRESET_AVATARS[pIdx]?.url || undefined;
+        }
+        return {
+          id: 'm' + (idx + 1),
+          name: name || 'メンバー',
+          avatarColor: avatarColor || '#3b82f6',
+          role: role || undefined,
+          avatarUrl: restoredAvatar || undefined,
+        };
+      }),
+      days: (days || []).map(([dayNumber, date, dayTitle, items]) => ({
+        dayNumber,
+        date,
+        title: dayTitle || undefined,
+        items: (items || []).map(
+          ([time, itTitle, catIdx, location, itMemo, endTime, transIdx, cost], itemIdx) => ({
+            id: `it-${dayNumber}-${itemIdx + 1}`,
+            time: time || '09:00',
+            endTime: endTime || undefined,
+            title: itTitle || '予定',
+            category: CATS[catIdx] || 'other',
+            location: location || undefined,
+            locationUrl: location
+              ? `https://maps.google.com/?q=${encodeURIComponent(location)}`
+              : undefined,
+            memo: itMemo || undefined,
+            transportType: transIdx >= 0 ? TRANS[transIdx] : undefined,
+            cost: cost || undefined,
+          })
+        ),
+      })),
+      packingList: [],
+      souvenirs: [],
+      expenses: [],
+      createdAt: now,
+      updatedAt: now,
+    };
+  }
+
+  // 完全版（バージョン1または既存形式）
   const [
     , // version
     id,
@@ -217,14 +380,21 @@ function unpackTrip(arr: unknown[]): Trip {
     timeZoneOffset: timeZoneOffset ?? 0,
     timeZoneName: timeZoneName || undefined,
     memo: memo || undefined,
-    members: (members || []).map(([mid, name, avatarColor, role, email, avatarUrl], idx) => ({
-      id: mid || 'm' + (idx + 1),
-      name: name || 'メンバー',
-      avatarColor: avatarColor || '#3b82f6',
-      role: role || undefined,
-      email: email || undefined,
-      avatarUrl: avatarUrl || undefined,
-    })),
+    members: (members || []).map(([mid, name, avatarColor, role, email, avatarUrl], idx) => {
+      let restoredAvatar = avatarUrl;
+      if (restoredAvatar && restoredAvatar.startsWith('*')) {
+        const pIdx = parseInt(restoredAvatar.slice(1), 10);
+        restoredAvatar = PRESET_AVATARS[pIdx]?.url || undefined;
+      }
+      return {
+        id: mid || 'm' + (idx + 1),
+        name: name || 'メンバー',
+        avatarColor: avatarColor || '#3b82f6',
+        role: role || undefined,
+        email: email || undefined,
+        avatarUrl: restoredAvatar || undefined,
+      };
+    }),
     days: (days || []).map(([dayNumber, date, dayTitle, items]) => ({
       dayNumber,
       date,
@@ -306,7 +476,7 @@ export const shareService = {
       const json = strFromU8(inflated);
       const packed = JSON.parse(json);
 
-      // 配列形式（packTrip形式）の場合
+      // 配列形式（packTripまたはpackTripForQr形式）の場合
       if (Array.isArray(packed)) {
         return unpackTrip(packed);
       }
@@ -324,7 +494,7 @@ export const shareService = {
   },
 
   /**
-   * 共有用URLを生成
+   * 共有用URLを生成（完全版データ）
    * @param trip しおりオブジェクト
    * @param customOrigin ローカルIP指定など任意のオリジン（省略時は window.location.origin）
    */
@@ -333,6 +503,34 @@ export const shareService = {
     const origin = customOrigin ? customOrigin.replace(/\/+$/, '') : window.location.origin;
     const pathname = window.location.pathname;
     return `${origin}${pathname}#share=${compressed}`;
+  },
+
+  /**
+   * QRコード生成用URLを取得
+   * （完全版URLが2,200文字以下の場合は完全版、超える場合は主要スケジュール軽量版を自動生成）
+   */
+  generateQrCodeUrl(trip: Trip, customOrigin?: string): { url: string; isLightweight: boolean } {
+    const fullUrl = this.generateShareUrl(trip, customOrigin);
+    if (fullUrl.length <= 2200) {
+      return { url: fullUrl, isLightweight: false };
+    }
+    // 2,200文字を超える場合はQR専用軽量ペイロードを生成
+    try {
+      const packed = packTripForQr(trip);
+      const json = JSON.stringify(packed);
+      const u8 = strToU8(json);
+      const deflated = deflateSync(u8, { level: 9 });
+      const b64 = u8ToBase64Url(deflated);
+      const origin = customOrigin ? customOrigin.replace(/\/+$/, '') : window.location.origin;
+      const pathname = window.location.pathname;
+      return {
+        url: `${origin}${pathname}#share=${b64}`,
+        isLightweight: true,
+      };
+    } catch (e) {
+      console.error('Failed to generate QR code URL:', e);
+      return { url: fullUrl, isLightweight: false };
+    }
   },
 
   /**

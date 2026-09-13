@@ -33,6 +33,49 @@ interface ShareModalProps {
   onOpenPrint?: () => void;
 }
 
+/**
+ * QRコードの規格外例外（Data too longなど）でReactツリー全体がクラッシュするのを防ぐ安全ラッパー
+ */
+class SafeQrCode extends React.Component<
+  { value: string; size: number; level: 'L' | 'M'; marginSize: number },
+  { hasError: boolean }
+> {
+  state = { hasError: false };
+
+  static getDerivedStateFromError() {
+    return { hasError: true };
+  }
+
+  componentDidCatch(error: unknown) {
+    console.warn('SafeQrCode render error caught:', error);
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div className="qr-too-large-fallback">
+          <AlertCircle size={32} color="#f59e0b" />
+          <p style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-main)', marginTop: '6px' }}>
+            QRコードを表示できませんでした
+          </p>
+          <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+            下の「URLコピー」をご利用ください
+          </p>
+        </div>
+      );
+    }
+
+    return (
+      <QRCodeSVG
+        value={this.props.value}
+        size={this.props.size}
+        level={this.props.level}
+        marginSize={this.props.marginSize}
+      />
+    );
+  }
+}
+
 export const ShareModal: React.FC<ShareModalProps> = ({
   isOpen,
   onClose,
@@ -46,7 +89,7 @@ export const ShareModal: React.FC<ShareModalProps> = ({
 
   // メール送信用のState
   const [selectedMemberIds, setSelectedMemberIds] = useState<string[]>(() =>
-    trip.members.filter((m) => !!m.email).map((m) => m.id)
+    (trip.members || []).filter((m) => !!m.email).map((m) => m.id)
   );
   const [customEmails, setCustomEmails] = useState<string[]>([]);
   const [newEmailInput, setNewEmailInput] = useState('');
@@ -78,7 +121,7 @@ export const ShareModal: React.FC<ShareModalProps> = ({
     return undefined; // デフォルトは window.location.origin
   }, [urlMode, customIp]);
 
-  // しおりデータ全体が内包された共有URLを生成
+  // しおりデータ全体が内包された完全共有URLを生成（URLコピー・メール・LINE送信用）
   const shareUrl = useMemo(() => {
     try {
       return shareService.generateShareUrl(trip, effectiveOrigin);
@@ -88,12 +131,25 @@ export const ShareModal: React.FC<ShareModalProps> = ({
     }
   }, [trip, effectiveOrigin]);
 
+  // スマホカメラでの高速・確実な読み取り用に最適化されたQRコード用URL
+  const qrCodeInfo = useMemo(() => {
+    try {
+      return shareService.generateQrCodeUrl(trip, effectiveOrigin);
+    } catch (e) {
+      console.error('Failed to generate QR code URL:', e);
+      return { url: shareUrl, isLightweight: false };
+    }
+  }, [trip, effectiveOrigin, shareUrl]);
+
+  // QRコードのデータが上限（2,500文字）を超えているか判定
+  const isQrTooLarge = qrCodeInfo.url.length > 2500;
+
   // Web Share API（スマホのLINEやメッセージなど）対応判定
   const canNativeShare =
     typeof navigator !== 'undefined' && typeof navigator.share === 'function';
 
   // データ長に応じた誤り訂正レベル（データが多い場合はLにしてセル密度を最小化）
-  const qrLevel = shareUrl.length > 900 ? 'L' : 'M';
+  const qrLevel = qrCodeInfo.url.length > 900 ? 'L' : 'M';
 
   const handleCopyUrl = async () => {
     try {
@@ -256,19 +312,31 @@ export const ShareModal: React.FC<ShareModalProps> = ({
         <div className="qr-section-centered">
           <div
             className="qr-box-large"
-            onClick={() => setIsZoomed(!isZoomed)}
-            title="クリックして拡大 / 縮小"
+            onClick={() => !isQrTooLarge && setIsZoomed(!isZoomed)}
+            title={isQrTooLarge ? undefined : 'クリックして拡大 / 縮小'}
           >
-            <QRCodeSVG
-              value={shareUrl}
-              size={isZoomed ? 300 : 230}
-              level={qrLevel}
-              marginSize={2}
-            />
-            <div className="qr-zoom-hint">
-              <Maximize2 size={13} />
-              <span>{isZoomed ? '標準サイズに戻す' : 'クリックで特大表示'}</span>
-            </div>
+            {isQrTooLarge ? (
+              <div className="qr-too-large-fallback">
+                <AlertCircle size={36} color="var(--primary)" />
+                <p className="fallback-title">情報量が多いためQRコードを省略しています</p>
+                <p className="fallback-desc">
+                  日程やアイテム数が非常に多いため、下の「URLコピー」または「メール送信」をご利用ください。
+                </p>
+              </div>
+            ) : (
+              <SafeQrCode
+                value={qrCodeInfo.url}
+                size={isZoomed ? 300 : 230}
+                level={qrLevel}
+                marginSize={2}
+              />
+            )}
+            {!isQrTooLarge && (
+              <div className="qr-zoom-hint">
+                <Maximize2 size={13} />
+                <span>{isZoomed ? '標準サイズに戻す' : 'クリックで特大表示'}</span>
+              </div>
+            )}
           </div>
 
           <div className="qr-info-centered">
@@ -281,8 +349,17 @@ export const ShareModal: React.FC<ShareModalProps> = ({
             </p>
             <div className="qr-features-badge">
               <Sparkles size={13} />
-              <span>全日程・持ち物リスト・時差設定を完全同期</span>
+              <span>
+                {qrCodeInfo.isLightweight
+                  ? '全日程・時間・場所・時差設定を完全同期'
+                  : '全日程・持ち物リスト・時差設定を完全同期'}
+              </span>
             </div>
+            {qrCodeInfo.isLightweight && (
+              <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', margin: 0 }}>
+                ※持ち物やお土産・支出を含む全データは、下の「URLコピー」や「メール送信」で送れます
+              </p>
+            )}
           </div>
         </div>
 
