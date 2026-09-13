@@ -22,6 +22,7 @@ import type { Trip } from '../../types/trip';
 import { Modal } from '../common/Modal';
 import { storageService } from '../../services/storage';
 import { shareService } from '../../services/shareService';
+import { MemberAvatar } from '../common/MemberAvatar';
 import './ShareModal.css';
 
 interface ShareModalProps {
@@ -394,9 +395,11 @@ export const ShareModal: React.FC<ShareModalProps> = ({
                       checked={isSelected && hasEmail}
                       onChange={() => toggleMemberSelection(m.id)}
                     />
-                    <span
-                      className="member-check-dot"
-                      style={{ backgroundColor: m.avatarColor }}
+                    <MemberAvatar
+                      name={m.name}
+                      avatarColor={m.avatarColor}
+                      avatarUrl={m.avatarUrl}
+                      size="xs"
                     />
                     <span className="member-check-name">{m.name}</span>
                     {hasEmail ? (

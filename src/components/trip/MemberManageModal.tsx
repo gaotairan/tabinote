@@ -12,6 +12,8 @@ import {
   Copy,
 } from 'lucide-react';
 import { Modal } from '../common/Modal';
+import { MemberAvatar } from '../common/MemberAvatar';
+import { AvatarPicker } from '../common/AvatarPicker';
 import type { Trip, Member } from '../../types/trip';
 import { shareService } from '../../services/shareService';
 import './MemberManageModal.css';
@@ -45,6 +47,7 @@ export const MemberManageModal: React.FC<MemberManageModalProps> = ({
   const [role, setRole] = useState('');
   const [email, setEmail] = useState('');
   const [avatarColor, setAvatarColor] = useState(COLOR_PRESETS[0]);
+  const [avatarUrl, setAvatarUrl] = useState<string | undefined>(undefined);
 
   // 編集中のメンバー
   const [editingMemberId, setEditingMemberId] = useState<string | null>(null);
@@ -52,6 +55,7 @@ export const MemberManageModal: React.FC<MemberManageModalProps> = ({
   const [editRole, setEditRole] = useState('');
   const [editEmail, setEditEmail] = useState('');
   const [editColor, setEditColor] = useState(COLOR_PRESETS[0]);
+  const [editAvatarUrl, setEditAvatarUrl] = useState<string | undefined>(undefined);
 
   // アラートやメッセージ
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
@@ -80,6 +84,7 @@ export const MemberManageModal: React.FC<MemberManageModalProps> = ({
       role: role.trim() || undefined,
       email: email.trim() || undefined,
       avatarColor,
+      avatarUrl: avatarUrl ? avatarUrl.trim() : undefined,
     };
 
     const updatedMembers = [...trip.members, newMember];
@@ -93,6 +98,7 @@ export const MemberManageModal: React.FC<MemberManageModalProps> = ({
     setName('');
     setRole('');
     setEmail('');
+    setAvatarUrl(undefined);
     setAvatarColor(COLOR_PRESETS[Math.floor(Math.random() * COLOR_PRESETS.length)]);
     setErrorMsg(null);
   };
@@ -104,6 +110,7 @@ export const MemberManageModal: React.FC<MemberManageModalProps> = ({
     setEditRole(m.role || '');
     setEditEmail(m.email || '');
     setEditColor(m.avatarColor);
+    setEditAvatarUrl(m.avatarUrl);
     setErrorMsg(null);
   };
 
@@ -122,6 +129,7 @@ export const MemberManageModal: React.FC<MemberManageModalProps> = ({
         role: editRole.trim() || undefined,
         email: editEmail.trim() || undefined,
         avatarColor: editColor,
+        avatarUrl: editAvatarUrl ? editAvatarUrl.trim() : undefined,
       };
     });
 
@@ -300,18 +308,14 @@ export const MemberManageModal: React.FC<MemberManageModalProps> = ({
                       </div>
 
                       <div className="form-group full-width">
-                        <label className="form-label-sm">テーマカラー</label>
-                        <div className="color-presets-row">
-                          {COLOR_PRESETS.map((color) => (
-                            <button
-                              key={color}
-                              type="button"
-                              className={`color-dot-btn ${editColor === color ? 'active' : ''}`}
-                              style={{ backgroundColor: color }}
-                              onClick={() => setEditColor(color)}
-                            />
-                          ))}
-                        </div>
+                        <AvatarPicker
+                          name={editName || m.name}
+                          avatarColor={editColor}
+                          avatarUrl={editAvatarUrl}
+                          onChangeColor={setEditColor}
+                          onChangeAvatarUrl={setEditAvatarUrl}
+                          colorPresets={COLOR_PRESETS}
+                        />
                       </div>
                     </div>
 
@@ -332,12 +336,12 @@ export const MemberManageModal: React.FC<MemberManageModalProps> = ({
               return (
                 <div key={m.id} className="member-row-item">
                   <div className="member-avatar-col">
-                    <div
-                      className="member-avatar-circle"
-                      style={{ backgroundColor: m.avatarColor }}
-                    >
-                      {m.name.slice(0, 1)}
-                    </div>
+                    <MemberAvatar
+                      name={m.name}
+                      avatarColor={m.avatarColor}
+                      avatarUrl={m.avatarUrl}
+                      size="lg"
+                    />
                   </div>
 
                   <div className="member-info-col">
@@ -482,18 +486,14 @@ export const MemberManageModal: React.FC<MemberManageModalProps> = ({
             </div>
 
             <div className="form-group full-width">
-              <label className="form-label-sm">アバターカラー</label>
-              <div className="color-presets-row">
-                {COLOR_PRESETS.map((color) => (
-                  <button
-                    key={color}
-                    type="button"
-                    className={`color-dot-btn ${avatarColor === color ? 'active' : ''}`}
-                    style={{ backgroundColor: color }}
-                    onClick={() => setAvatarColor(color)}
-                  />
-                ))}
-              </div>
+              <AvatarPicker
+                name={name || '新規'}
+                avatarColor={avatarColor}
+                avatarUrl={avatarUrl}
+                onChangeColor={setAvatarColor}
+                onChangeAvatarUrl={setAvatarUrl}
+                colorPresets={COLOR_PRESETS}
+              />
             </div>
           </div>
 

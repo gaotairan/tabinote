@@ -5,12 +5,12 @@ import {
   Trash2,
   ArrowRight,
   Receipt,
-  UserCheck,
   CheckCircle2,
 } from 'lucide-react';
 import type { Trip, ExpenseItem, ExpenseCategory } from '../../types/trip';
 import { calculateSettlements } from '../../utils/settlement';
 import { Modal } from '../common/Modal';
+import { MemberAvatar } from '../common/MemberAvatar';
 import { format } from 'date-fns';
 import './ExpenseTab.css';
 
@@ -136,12 +136,12 @@ export const ExpenseTab: React.FC<ExpenseTabProps> = ({
                 <div key={index} className="settlement-card">
                   <div className="settlement-route">
                     <div className="route-member">
-                      <span
-                        className="member-avatar-mini"
-                        style={{ backgroundColor: fromMember?.avatarColor }}
-                      >
-                        {fromMember?.name.slice(0, 1)}
-                      </span>
+                      <MemberAvatar
+                        name={fromMember?.name || ''}
+                        avatarColor={fromMember?.avatarColor}
+                        avatarUrl={fromMember?.avatarUrl}
+                        size="sm"
+                      />
                       <span className="member-name-text">{fromMember?.name}</span>
                     </div>
 
@@ -151,12 +151,12 @@ export const ExpenseTab: React.FC<ExpenseTabProps> = ({
                     </div>
 
                     <div className="route-member">
-                      <span
-                        className="member-avatar-mini"
-                        style={{ backgroundColor: toMember?.avatarColor }}
-                      >
-                        {toMember?.name.slice(0, 1)}
-                      </span>
+                      <MemberAvatar
+                        name={toMember?.name || ''}
+                        avatarColor={toMember?.avatarColor}
+                        avatarUrl={toMember?.avatarUrl}
+                        size="sm"
+                      />
                       <span className="member-name-text">{toMember?.name}</span>
                     </div>
                   </div>
@@ -183,12 +183,12 @@ export const ExpenseTab: React.FC<ExpenseTabProps> = ({
             return (
               <div key={m.id} className="balance-row">
                 <div className="balance-member">
-                  <span
-                    className="member-avatar-mini"
-                    style={{ backgroundColor: m.avatarColor }}
-                  >
-                    {m.name.slice(0, 1)}
-                  </span>
+                  <MemberAvatar
+                    name={m.name}
+                    avatarColor={m.avatarColor}
+                    avatarUrl={m.avatarUrl}
+                    size="sm"
+                  />
                   <span className="balance-name">{m.name}</span>
                 </div>
                 <div className="balance-status">
@@ -232,7 +232,15 @@ export const ExpenseTab: React.FC<ExpenseTabProps> = ({
                     <span className="expense-date">{exp.date}</span>
                     <strong className="expense-title">{exp.title}</strong>
                     <div className="expense-meta">
-                      <span>支払者: {payer?.name || '不明'}</span>
+                      <span className="expense-payer-badge">
+                        <MemberAvatar
+                          name={payer?.name || ''}
+                          avatarColor={payer?.avatarColor}
+                          avatarUrl={payer?.avatarUrl}
+                          size="xs"
+                        />
+                        <span>{payer?.name || '不明'}</span>
+                      </span>
                       {exp.memo && <span className="expense-memo">({exp.memo})</span>}
                     </div>
                   </div>
@@ -326,7 +334,12 @@ export const ExpenseTab: React.FC<ExpenseTabProps> = ({
                     className={`target-member-btn ${isSelected ? 'selected' : ''}`}
                     onClick={() => handleToggleTarget(m.id)}
                   >
-                    <UserCheck size={14} />
+                    <MemberAvatar
+                      name={m.name}
+                      avatarColor={m.avatarColor}
+                      avatarUrl={m.avatarUrl}
+                      size="xs"
+                    />
                     <span>{m.name}</span>
                   </button>
                 );

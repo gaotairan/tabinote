@@ -297,3 +297,11 @@
   border-color: var(--primary);
   color: var(--primary);
 }
+
+.expense-payer-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-weight: 600;
+  color: #334155;
+}

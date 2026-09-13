@@ -10,6 +10,7 @@ import type { Trip, Member } from '../../types/trip';
 import { PRESET_COVERS } from '../../mock/sampleTrip';
 import { differenceInCalendarDays, parseISO, format } from 'date-fns';
 import { TIMEZONE_PRESETS, inferTimeZone } from '../../utils/timezone';
+import { MemberAvatar } from '../common/MemberAvatar';
 
 interface CreateTripModalProps {
   isOpen: boolean;
@@ -285,9 +286,11 @@ export const CreateTripModal: React.FC<CreateTripModalProps> = ({
           <div className="members-chips-list">
             {members.map((m) => (
               <div key={m.id} className="member-chip">
-                <span
-                  className="member-avatar-dot"
-                  style={{ backgroundColor: m.avatarColor }}
+                <MemberAvatar
+                  name={m.name}
+                  avatarColor={m.avatarColor}
+                  avatarUrl={m.avatarUrl}
+                  size="xs"
                 />
                 <span className="member-name">{m.name}</span>
                 {m.role && <span className="member-role">({m.role})</span>}

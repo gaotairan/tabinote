@@ -32,6 +32,7 @@ export interface Member {
   id: string;
   name: string;
   avatarColor: string;
+  avatarUrl?: string; // カスタムサムネイル画像（Base64またはURL）
   role?: string; // "リーダー", "カメラ係", "会計" etc.
   email?: string; // メールアドレス（しおりURLの送信先など）
 }

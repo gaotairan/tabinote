@@ -14,6 +14,7 @@ import {
 import type { Trip } from '../../types/trip';
 import { differenceInCalendarDays, parseISO, isFuture, isToday } from 'date-fns';
 import { MemberManageModal } from './MemberManageModal';
+import { MemberAvatar } from '../common/MemberAvatar';
 import './TripOverviewTab.css';
 
 interface TripOverviewTabProps {
@@ -123,12 +124,12 @@ export const TripOverviewTab: React.FC<TripOverviewTabProps> = ({
           <div className="members-grid">
             {trip.members.map((member) => (
               <div key={member.id} className="member-card-item">
-                <div
-                  className="member-avatar"
-                  style={{ backgroundColor: member.avatarColor }}
-                >
-                  {member.name.slice(0, 1)}
-                </div>
+                <MemberAvatar
+                  name={member.name}
+                  avatarColor={member.avatarColor}
+                  avatarUrl={member.avatarUrl}
+                  size="md"
+                />
                 <div className="member-info">
                   <span className="member-name">{member.name}</span>
                   {member.role && (

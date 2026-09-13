@@ -96,7 +96,7 @@ function packTrip(t: Trip): unknown[] {
     t.timeZoneOffset ?? 0,
     t.timeZoneName || '',
     t.memo || '',
-    t.members?.map((m) => [m.id, m.name, m.avatarColor, m.role || '', m.email || '']) || [],
+    t.members?.map((m) => [m.id, m.name, m.avatarColor, m.role || '', m.email || '', m.avatarUrl || '']) || [],
     t.days?.map((d) => [
       d.dayNumber,
       d.date,
@@ -189,7 +189,7 @@ function unpackTrip(arr: unknown[]): Trip {
     number,
     string,
     string,
-    [string, string, string, string, string?][],
+    [string, string, string, string, string?, string?][],
     [number, string, string, [string, string, string, string, number, string, string, number, number, string][]][],
     [string, string, number, number, string][],
     [string, string, string, string, number, number, string][],
@@ -217,12 +217,13 @@ function unpackTrip(arr: unknown[]): Trip {
     timeZoneOffset: timeZoneOffset ?? 0,
     timeZoneName: timeZoneName || undefined,
     memo: memo || undefined,
-    members: (members || []).map(([mid, name, avatarColor, role, email], idx) => ({
+    members: (members || []).map(([mid, name, avatarColor, role, email, avatarUrl], idx) => ({
       id: mid || 'm' + (idx + 1),
       name: name || 'メンバー',
       avatarColor: avatarColor || '#3b82f6',
       role: role || undefined,
       email: email || undefined,
+      avatarUrl: avatarUrl || undefined,
     })),
     days: (days || []).map(([dayNumber, date, dayTitle, items]) => ({
       dayNumber,

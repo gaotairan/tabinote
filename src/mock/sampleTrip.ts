@@ -57,9 +57,9 @@ export const SAMPLE_TRIP: Trip = {
   timeZoneOffset: 0,
   timeZoneName: '日本国内 (時差なし)',
   members: [
-    { id: 'm1', name: 'たろう', avatarColor: '#3b82f6', role: 'リーダー / 計画', email: 'taro@example.com' },
-    { id: 'm2', name: 'はなこ', avatarColor: '#ec4899', role: 'カメラ係 / 美食担当', email: 'hanako@example.com' },
-    { id: 'm3', name: 'けんた', avatarColor: '#10b981', role: 'ドライバー / 会計', email: 'kenta@example.com' },
+    { id: 'm1', name: 'たろう', avatarColor: '#3b82f6', role: 'リーダー / 計画', email: 'taro@example.com', avatarUrl: 'https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?auto=format&fit=crop&w=200&h=200&q=80' },
+    { id: 'm2', name: 'はなこ', avatarColor: '#ec4899', role: 'カメラ係 / 美食担当', email: 'hanako@example.com', avatarUrl: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=200&h=200&q=80' },
+    { id: 'm3', name: 'けんた', avatarColor: '#10b981', role: 'ドライバー / 会計', email: 'kenta@example.com', avatarUrl: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=200&h=200&q=80' },
   ],
   days: [
     {

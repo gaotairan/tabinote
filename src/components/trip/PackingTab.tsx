@@ -13,6 +13,7 @@ import {
 } from 'lucide-react';
 import type { Trip, PackingItem, PackingCategory } from '../../types/trip';
 import confetti from 'canvas-confetti';
+import { MemberAvatar } from '../common/MemberAvatar';
 import './PackingTab.css';
 
 interface PackingTabProps {
@@ -214,7 +215,13 @@ export const PackingTab: React.FC<PackingTabProps> = ({
                             className="member-tag"
                             style={{ backgroundColor: `${assignedMember.avatarColor}20`, color: assignedMember.avatarColor }}
                           >
-                            {assignedMember.name}
+                            <MemberAvatar
+                              name={assignedMember.name}
+                              avatarColor={assignedMember.avatarColor}
+                              avatarUrl={assignedMember.avatarUrl}
+                              size={16}
+                            />
+                            <span>{assignedMember.name}</span>
                           </span>
                         )}
                       </div>
