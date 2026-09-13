@@ -157,9 +157,42 @@ export async function fetchCalendarEvents(
   const items = data.items || [];
 
   return items
-    .filter((item: any) => item.status !== 'cancelled')
+    .filter((item: any) => {
+      if (item.status === 'cancelled') return false;
+      // 日本の祝日カレンダー等の自動除外（祝日や日節など）
+      if (
+        calendarId.includes('holiday@group.v.calendar.google.com') ||
+        calendarId.includes('contacts@group.v.calendar.google.com')
+      ) {
+        return false;
+      }
+      return true;
+    })
     .map((item: any) => {
       const isAllDay = !!item.start.date;
+
+      let localDateStr = '';
+      let localTimeStr: string | undefined = undefined;
+      let localEndTimeStr: string | undefined = undefined;
+
+      if (isAllDay) {
+        localDateStr = item.start.date; // "2026-09-21"
+      } else if (item.start.dateTime) {
+        // "2026-09-21T16:55:00+09:00" または "2026-09-22T10:00:00+02:00"
+        const [dPart, tPart] = item.start.dateTime.split('T');
+        localDateStr = dPart;
+        if (tPart) {
+          localTimeStr = tPart.substring(0, 5); // "16:55"
+        }
+      }
+
+      if (item.end?.dateTime) {
+        const [, tPart] = item.end.dateTime.split('T');
+        if (tPart) {
+          localEndTimeStr = tPart.substring(0, 5);
+        }
+      }
+
       const start = isAllDay
         ? new Date(`${item.start.date}T00:00:00`)
         : new Date(item.start.dateTime);
@@ -176,6 +209,10 @@ export async function fetchCalendarEvents(
         isAllDay,
         location: item.location,
         description: item.description,
+        localDateStr,
+        localTimeStr,
+        localEndTimeStr,
+        timeZone: item.start.timeZone,
       };
     });
 }

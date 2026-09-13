@@ -429,13 +429,14 @@ END:VCALENDAR`;
                           <span>
                             {ev.isAllDay
                               ? '終日'
-                              : ev.start.toLocaleTimeString([], {
+                              : ev.localTimeStr ||
+                                ev.start.toLocaleTimeString([], {
                                   hour: '2-digit',
                                   minute: '2-digit',
                                 })}
                           </span>
                         </div>
-                        <div className="preview-event-body">
+                        <div className="preview-event-body flex-1">
                           <strong className="preview-event-title">{ev.summary}</strong>
                           {ev.location && (
                             <span className="preview-event-loc">
@@ -444,6 +445,16 @@ END:VCALENDAR`;
                             </span>
                           )}
                         </div>
+                        <button
+                          type="button"
+                          className="action-icon-btn delete-btn"
+                          title="この予定をしおりから除外"
+                          onClick={() => {
+                            setParsedEvents(parsedEvents.filter((_, idx) => idx !== i));
+                          }}
+                        >
+                          ✕
+                        </button>
                       </div>
                     ))}
                   </div>

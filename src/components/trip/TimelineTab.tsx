@@ -254,9 +254,24 @@ export const TimelineTab: React.FC<TimelineTabProps> = ({
       {currentDay && (
         <div className="current-day-header">
           <div>
-            <h3 className="day-title">
-              {currentDay.dayNumber}日目 ({currentDay.date})
-            </h3>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <h3 className="day-title">
+                {currentDay.dayNumber}日目 ({currentDay.date})
+              </h3>
+              <span
+                style={{
+                  fontSize: '0.72rem',
+                  fontWeight: 600,
+                  backgroundColor: '#eff6ff',
+                  color: '#2563eb',
+                  padding: '2px 8px',
+                  borderRadius: '9999px',
+                  border: '1px solid #bfdbfe',
+                }}
+              >
+                現地時間
+              </span>
+            </div>
             {currentDay.title && (
               <p className="day-subtitle">{currentDay.title}</p>
             )}

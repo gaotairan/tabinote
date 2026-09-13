@@ -105,14 +105,23 @@ export function generateTripFromEvents(
     throw new Error('予定が見つかりませんでした');
   }
 
-  // 日付順に並び替え
-  const sorted = [...events].sort((a, b) => a.start.getTime() - b.start.getTime());
+  // 現地時間の日付文字列（YYYY-MM-DD）でソート
+  const getEventDate = (ev: RawCalendarEvent) =>
+    ev.localDateStr || format(ev.start, 'yyyy-MM-dd');
+
+  const sorted = [...events].sort((a, b) => {
+    const dComp = getEventDate(a).localeCompare(getEventDate(b));
+    if (dComp !== 0) return dComp;
+    const aTime = a.localTimeStr || (a.isAllDay ? '00:00' : format(a.start, 'HH:mm'));
+    const bTime = b.localTimeStr || (b.isAllDay ? '00:00' : format(b.start, 'HH:mm'));
+    return aTime.localeCompare(bTime);
+  });
 
   const firstEvent = sorted[0];
   const lastEvent = sorted[sorted.length - 1];
 
-  const startDateStr = format(firstEvent.start, 'yyyy-MM-dd');
-  const endDateStr = format(lastEvent.start, 'yyyy-MM-dd');
+  const startDateStr = getEventDate(firstEvent);
+  const endDateStr = getEventDate(lastEvent);
 
   // 開始日〜終了日の日数を算出
   const startDay = parseISO(startDateStr);
@@ -134,17 +143,22 @@ export function generateTripFromEvents(
   let inferredDestination = options?.customDestination || '';
   let inferredTitle = options?.customTitle || '';
 
-  // イベントを日別に振り分け
+  // イベントを日別に振り分け（現地日付を使用）
   for (const ev of sorted) {
-    const eventDateStr = format(ev.start, 'yyyy-MM-dd');
+    const eventDateStr = getEventDate(ev);
     const dayItems = daysMap.get(eventDateStr);
 
     if (dayItems) {
       const matchText = `${ev.summary} ${ev.location || ''} ${ev.description || ''}`;
       const { category, transportType } = inferCategory(matchText);
 
-      const time = ev.isAllDay ? '終日' : format(ev.start, 'HH:mm');
-      const endTime = ev.end && !ev.isAllDay ? format(ev.end, 'HH:mm') : undefined;
+      // 現地時刻をそのまま使用（時差変換による狂いを防止）
+      const time = ev.isAllDay
+        ? '終日'
+        : ev.localTimeStr || format(ev.start, 'HH:mm');
+      const endTime =
+        ev.localEndTimeStr ||
+        (ev.end && !ev.isAllDay ? format(ev.end, 'HH:mm') : undefined);
 
       const location = ev.location?.trim();
       const locationUrl = location
@@ -164,8 +178,12 @@ export function generateTripFromEvents(
       });
 
       // 目的地の推測（もし未設定なら最初の場所やサマリーから）
-      if (!inferredDestination && location) {
-        inferredDestination = location.split(/[,、\s]/)[0];
+      if (!inferredDestination) {
+        if (location) {
+          inferredDestination = location.split(/[,、\s->]/)[0].trim();
+        } else if (ev.isAllDay && ev.summary.length <= 10) {
+          inferredDestination = ev.summary;
+        }
       }
     }
   }

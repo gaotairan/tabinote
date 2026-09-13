@@ -5,6 +5,10 @@ export interface RawCalendarEvent {
   isAllDay: boolean;
   location?: string;
   description?: string;
+  localDateStr?: string; // "2026-09-22" (現地の日付)
+  localTimeStr?: string; // "10:00" (現地の開始時刻)
+  localEndTimeStr?: string; // "11:30" (現地の終了時刻)
+  timeZone?: string;
 }
 
 /**
@@ -35,6 +39,9 @@ export function parseICS(icsContent: string): RawCalendarEvent[] {
           isAllDay: currentEvent.isAllDay ?? false,
           location: currentEvent.location,
           description: currentEvent.description,
+          localDateStr: currentEvent.localDateStr,
+          localTimeStr: currentEvent.localTimeStr,
+          localEndTimeStr: currentEvent.localEndTimeStr,
         });
       }
       inEvent = false;
@@ -71,6 +78,8 @@ export function parseICS(icsContent: string): RawCalendarEvent[] {
         if (parsed) {
           currentEvent.start = parsed.date;
           currentEvent.isAllDay = parsed.isAllDay;
+          currentEvent.localDateStr = parsed.dateStr;
+          currentEvent.localTimeStr = parsed.timeStr;
         }
         break;
       }
@@ -78,6 +87,7 @@ export function parseICS(icsContent: string): RawCalendarEvent[] {
         const parsed = parseIcsDate(value, keyPart);
         if (parsed) {
           currentEvent.end = parsed.date;
+          currentEvent.localEndTimeStr = parsed.timeStr;
         }
         break;
       }
@@ -96,14 +106,21 @@ export function parseICS(icsContent: string): RawCalendarEvent[] {
 function parseIcsDate(
   val: string,
   _keyPart?: string
-): { date: Date; isAllDay: boolean } | null {
+): { date: Date; isAllDay: boolean; dateStr: string; timeStr?: string } | null {
   const isAllDay = val.length === 8 && !val.includes('T');
 
   if (isAllDay) {
-    const year = parseInt(val.substring(0, 4), 10);
-    const month = parseInt(val.substring(4, 6), 10) - 1;
-    const day = parseInt(val.substring(6, 8), 10);
-    return { date: new Date(year, month, day, 0, 0, 0), isAllDay: true };
+    const yStr = val.substring(0, 4);
+    const mStr = val.substring(4, 6);
+    const dStr = val.substring(6, 8);
+    const year = parseInt(yStr, 10);
+    const month = parseInt(mStr, 10) - 1;
+    const day = parseInt(dStr, 10);
+    return {
+      date: new Date(year, month, day, 0, 0, 0),
+      isAllDay: true,
+      dateStr: `${yStr}-${mStr}-${dStr}`,
+    };
   }
 
   // 時刻付き "20261010T083000" or "20261010T083000Z"
@@ -111,25 +128,26 @@ function parseIcsDate(
   const [datePart, timePart] = cleanVal.split('T');
   if (!datePart || !timePart) return null;
 
-  const year = parseInt(datePart.substring(0, 4), 10);
-  const month = parseInt(datePart.substring(4, 6), 10) - 1;
-  const day = parseInt(datePart.substring(6, 8), 10);
+  const yStr = datePart.substring(0, 4);
+  const mStr = datePart.substring(4, 6);
+  const dStr = datePart.substring(6, 8);
+  const year = parseInt(yStr, 10);
+  const month = parseInt(mStr, 10) - 1;
+  const day = parseInt(dStr, 10);
 
-  const hour = parseInt(timePart.substring(0, 2), 10) || 0;
-  const minute = parseInt(timePart.substring(2, 4), 10) || 0;
+  const hStr = timePart.substring(0, 2);
+  const minStr = timePart.substring(2, 4);
+  const hour = parseInt(hStr, 10) || 0;
+  const minute = parseInt(minStr, 10) || 0;
   const second = parseInt(timePart.substring(4, 6), 10) || 0;
 
-  if (val.endsWith('Z')) {
-    // UTC
-    return {
-      date: new Date(Date.UTC(year, month, day, hour, minute, second)),
-      isAllDay: false,
-    };
-  }
+  const dateStr = `${yStr}-${mStr}-${dStr}`;
+  const timeStr = `${hStr}:${minStr}`;
 
-  // ローカル時間またはTZID指定
   return {
     date: new Date(year, month, day, hour, minute, second),
     isAllDay: false,
+    dateStr,
+    timeStr,
   };
 }
