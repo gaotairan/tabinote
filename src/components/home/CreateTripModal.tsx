@@ -56,8 +56,11 @@ export const CreateTripModal: React.FC<CreateTripModalProps> = ({
   );
   const [newMemberName, setNewMemberName] = useState('');
   const [newMemberRole, setNewMemberRole] = useState('');
+  const [newMemberEmail, setNewMemberEmail] = useState('');
 
   const [error, setError] = useState<string | null>(null);
+
+
 
   const handleAddMember = () => {
     if (!newMemberName.trim()) return;
@@ -70,10 +73,12 @@ export const CreateTripModal: React.FC<CreateTripModalProps> = ({
         name: newMemberName.trim(),
         avatarColor: randomColor,
         role: newMemberRole.trim() || undefined,
+        email: newMemberEmail.trim() || undefined,
       },
     ]);
     setNewMemberName('');
     setNewMemberRole('');
+    setNewMemberEmail('');
   };
 
   const handleRemoveMember = (id: string) => {
@@ -286,10 +291,12 @@ export const CreateTripModal: React.FC<CreateTripModalProps> = ({
                 />
                 <span className="member-name">{m.name}</span>
                 {m.role && <span className="member-role">({m.role})</span>}
+                {m.email && <span className="member-role" title={m.email}>✉</span>}
                 <button
                   type="button"
                   className="chip-remove-btn"
                   onClick={() => handleRemoveMember(m.id)}
+                  title="メンバーを削除"
                 >
                   <Trash2 size={12} />
                 </button>
@@ -297,29 +304,40 @@ export const CreateTripModal: React.FC<CreateTripModalProps> = ({
             ))}
           </div>
 
-          <div className="add-member-inputs">
-            <input
-              type="text"
-              className="form-input"
-              placeholder="名前（例: はなこ）"
-              value={newMemberName}
-              onChange={(e) => setNewMemberName(e.target.value)}
-            />
-            <input
-              type="text"
-              className="form-input"
-              placeholder="役割（例: カメラ係）"
-              value={newMemberRole}
-              onChange={(e) => setNewMemberRole(e.target.value)}
-            />
-            <button
-              type="button"
-              className="btn btn-secondary"
-              onClick={handleAddMember}
-            >
-              <Plus size={16} />
-              <span>追加</span>
-            </button>
+          <div className="add-member-inputs-stacked">
+            <div className="add-member-row-top">
+              <input
+                type="text"
+                className="form-input"
+                placeholder="名前（例: はなこ）*"
+                value={newMemberName}
+                onChange={(e) => setNewMemberName(e.target.value)}
+              />
+              <input
+                type="text"
+                className="form-input"
+                placeholder="役割（例: カメラ係）"
+                value={newMemberRole}
+                onChange={(e) => setNewMemberRole(e.target.value)}
+              />
+            </div>
+            <div className="add-member-row-bottom">
+              <input
+                type="email"
+                className="form-input flex-1"
+                placeholder="メール（例: hanako@example.com）"
+                value={newMemberEmail}
+                onChange={(e) => setNewMemberEmail(e.target.value)}
+              />
+              <button
+                type="button"
+                className="btn btn-secondary"
+                onClick={handleAddMember}
+              >
+                <Plus size={16} />
+                <span>メンバー追加</span>
+              </button>
+            </div>
           </div>
         </div>
 

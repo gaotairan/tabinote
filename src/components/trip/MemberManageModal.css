@@ -1,0 +1,479 @@
+/* メンバー管理モーダル全体のスタイル */
+.member-manage-modal {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+/* アラートバナー */
+.manage-alert-banner {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background-color: #fef2f2;
+  border: 1px solid #fecaca;
+  color: #dc2626;
+  padding: 10px 14px;
+  border-radius: 10px;
+  font-size: 0.85rem;
+  font-weight: 500;
+}
+
+/* セクション共通 */
+.section-header-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+
+.section-subtitle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: #1e293b;
+  margin: 0;
+}
+
+.section-hint {
+  font-size: 0.75rem;
+  color: #64748b;
+}
+
+/* メンバーリスト一覧スクロール */
+.member-cards-scroll {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  max-height: 280px;
+  overflow-y: auto;
+  padding-right: 4px;
+}
+
+.member-cards-scroll::-webkit-scrollbar {
+  width: 6px;
+}
+.member-cards-scroll::-webkit-scrollbar-thumb {
+  background-color: #cbd5e1;
+  border-radius: 4px;
+}
+
+/* メンバー行アイテム */
+.member-row-item {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  background-color: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  padding: 12px 14px;
+  transition: all 0.2s ease;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.03);
+}
+
+.member-row-item:hover {
+  border-color: #cbd5e1;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.05);
+}
+
+/* アバター */
+.member-avatar-col {
+  flex-shrink: 0;
+}
+
+.member-avatar-circle {
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+  color: #ffffff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 1.05rem;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.12);
+}
+
+/* メンバー情報 */
+.member-info-col {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.member-name-line {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.member-fullname {
+  font-weight: 700;
+  font-size: 0.95rem;
+  color: #0f172a;
+}
+
+.member-role-tag {
+  display: inline-block;
+  font-size: 0.72rem;
+  font-weight: 600;
+  background-color: #f1f5f9;
+  color: #475569;
+  padding: 2px 8px;
+  border-radius: 6px;
+  border: 1px solid #e2e8f0;
+}
+
+.member-email-line {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.email-display {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 0.78rem;
+  color: #475569;
+  background: #f8fafc;
+  padding: 2px 8px;
+  border-radius: 6px;
+  border: 1px solid #e2e8f0;
+  max-width: 100%;
+}
+
+.email-icon {
+  color: #3b82f6;
+  flex-shrink: 0;
+}
+
+.email-text {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.btn-icon-subtle {
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 2px;
+  display: flex;
+  align-items: center;
+  color: #94a3b8;
+  border-radius: 4px;
+  transition: color 0.15s;
+}
+
+.btn-icon-subtle:hover {
+  color: #334155;
+}
+
+.email-empty-tag {
+  font-size: 0.72rem;
+  color: #94a3b8;
+}
+
+/* アクションボタン群 */
+.member-actions-col {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.email-action-group {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.btn-action-primary {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  background: linear-gradient(135deg, #2563eb, #1d4ed8);
+  color: #ffffff;
+  border: none;
+  border-radius: 6px;
+  padding: 5px 9px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  box-shadow: 0 1px 3px rgba(37, 99, 235, 0.25);
+}
+
+.btn-action-primary:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 3px 8px rgba(37, 99, 235, 0.35);
+}
+
+.btn-action-secondary {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  background: #f8fafc;
+  color: #ea4335;
+  border: 1px solid #fee2e2;
+  border-radius: 6px;
+  padding: 4px 8px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.btn-action-secondary:hover {
+  background: #fef2f2;
+  border-color: #fca5a5;
+}
+
+.btn-action-outline {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.75rem;
+  font-weight: 500;
+  background: #ffffff;
+  color: #64748b;
+  border: 1px dashed #cbd5e1;
+  border-radius: 6px;
+  padding: 4px 8px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.btn-action-outline:hover {
+  border-color: #3b82f6;
+  color: #3b82f6;
+  background: #eff6ff;
+}
+
+.btn-icon-action {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 6px;
+  border: 1px solid #e2e8f0;
+  background: #ffffff;
+  color: #64748b;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.btn-icon-action:hover:not(:disabled) {
+  background: #f8fafc;
+  color: #1e293b;
+  border-color: #cbd5e1;
+}
+
+.btn-icon-action.danger:hover:not(:disabled) {
+  background: #fef2f2;
+  color: #ef4444;
+  border-color: #fecaca;
+}
+
+.btn-icon-action:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+/* メンバー編集中カード */
+.member-edit-card {
+  background: #f8fafc;
+  border: 2px solid #3b82f6;
+  border-radius: 12px;
+  padding: 14px;
+  box-shadow: 0 4px 14px rgba(59, 130, 246, 0.1);
+}
+
+.edit-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+
+.edit-badge {
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: #2563eb;
+  background: #dbeafe;
+  padding: 3px 9px;
+  border-radius: 12px;
+}
+
+.btn-text-sm {
+  background: none;
+  border: none;
+  font-size: 0.8rem;
+  color: #64748b;
+  cursor: pointer;
+  padding: 2px 6px;
+}
+
+.btn-text-sm:hover {
+  color: #1e293b;
+  text-decoration: underline;
+}
+
+.edit-form-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.edit-form-grid .full-width {
+  grid-column: span 2;
+}
+
+.form-label-sm {
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: #334155;
+  margin-bottom: 4px;
+  display: block;
+}
+
+.edit-actions-row {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 12px;
+}
+
+/* 新規メンバー追加カード */
+.add-member-card {
+  background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+  border: 1px solid #e2e8f0;
+  border-radius: 14px;
+  padding: 16px;
+}
+
+.add-member-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 14px;
+}
+
+.badge-icon-title {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: #1e293b;
+}
+
+.add-hint {
+  font-size: 0.75rem;
+  color: #64748b;
+}
+
+.add-member-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+.add-member-grid .full-width {
+  grid-column: span 2;
+}
+
+.req {
+  color: #ef4444;
+}
+
+/* カラーパレット */
+.color-presets-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.color-dot-btn {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  border: 2px solid #ffffff;
+  box-shadow: 0 0 0 1px #cbd5e1;
+  cursor: pointer;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.color-dot-btn:hover {
+  transform: scale(1.15);
+}
+
+.color-dot-btn.active {
+  box-shadow: 0 0 0 2px #0f172a, 0 2px 6px rgba(0, 0, 0, 0.2);
+  transform: scale(1.2);
+}
+
+.add-submit-row {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 14px;
+}
+
+/* ヒントバナー */
+.email-feature-tip {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  background: #eff6ff;
+  border: 1px solid #bfdbfe;
+  border-radius: 10px;
+  padding: 12px 14px;
+}
+
+.tip-icon {
+  color: #2563eb;
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+.tip-content strong {
+  display: block;
+  font-size: 0.82rem;
+  color: #1d4ed8;
+  margin-bottom: 2px;
+}
+
+.tip-content p {
+  margin: 0;
+  font-size: 0.78rem;
+  color: #3b82f6;
+  line-height: 1.4;
+}
+
+@media (max-width: 600px) {
+  .edit-form-grid,
+  .add-member-grid {
+    grid-template-columns: 1fr;
+  }
+  .edit-form-grid .full-width,
+  .add-member-grid .full-width {
+    grid-column: span 1;
+  }
+  .member-row-item {
+    flex-wrap: wrap;
+  }
+  .member-actions-col {
+    width: 100%;
+    justify-content: flex-end;
+    margin-top: 6px;
+    padding-top: 6px;
+    border-top: 1px dashed #e2e8f0;
+  }
+}

@@ -211,6 +211,207 @@
   gap: 10px;
 }
 
+/* メール送信セクション */
+.share-email-section {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  padding: 14px;
+}
+
+.email-section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.email-section-title {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: #1e293b;
+}
+
+.icon-mail {
+  color: #2563eb;
+}
+
+.email-recipients-count {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #2563eb;
+  background: #dbeafe;
+  padding: 2px 8px;
+  border-radius: 10px;
+}
+
+.email-section-desc {
+  font-size: 0.78rem;
+  color: #64748b;
+  margin: 0;
+  line-height: 1.4;
+}
+
+.member-email-selection-box {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  padding: 10px;
+}
+
+.selection-box-label {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #475569;
+}
+
+.member-email-checkboxes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.member-email-check-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  background: #f8fafc;
+  border: 1px solid #cbd5e1;
+  border-radius: 20px;
+  font-size: 0.78rem;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  user-select: none;
+}
+
+.member-email-check-item:hover:not(.disabled) {
+  background: #eff6ff;
+  border-color: #93c5fd;
+}
+
+.member-email-check-item.selected {
+  background: #eff6ff;
+  border-color: #3b82f6;
+  font-weight: 600;
+}
+
+.member-email-check-item.disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  border-style: dashed;
+}
+
+.member-check-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.member-check-name {
+  color: #1e293b;
+}
+
+.member-check-addr {
+  font-size: 0.72rem;
+  color: #64748b;
+}
+
+.member-check-no-addr {
+  font-size: 0.7rem;
+  color: #94a3b8;
+}
+
+/* カスタムメール追加 */
+.custom-email-input-row {
+  display: flex;
+  gap: 8px;
+}
+
+.custom-email-input-row .form-input {
+  font-size: 0.8rem;
+}
+
+.custom-emails-tags-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.custom-email-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.75rem;
+  background: #eff6ff;
+  border: 1px solid #bfdbfe;
+  color: #1d4ed8;
+  padding: 3px 8px;
+  border-radius: 6px;
+}
+
+.tag-remove-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  color: #64748b;
+  margin-left: 2px;
+}
+
+.tag-remove-btn:hover {
+  color: #ef4444;
+}
+
+/* 送信ボタングリッド */
+.email-action-buttons-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+  margin-top: 4px;
+}
+
+.email-btn-primary {
+  font-size: 0.8rem;
+  padding: 8px 10px;
+  justify-content: center;
+}
+
+.email-btn-gmail {
+  font-size: 0.8rem;
+  padding: 8px 10px;
+  justify-content: center;
+  color: #ea4335;
+  border-color: #fecaca;
+  background: #ffffff;
+}
+
+.email-btn-gmail:hover:not(:disabled) {
+  background: #fef2f2;
+  border-color: #f87171;
+}
+
+.email-btn-copy {
+  font-size: 0.8rem;
+  padding: 8px 10px;
+  justify-content: center;
+  background: #ffffff;
+}
+
 @media (max-width: 640px) {
   .qr-box-large {
     padding: 10px;
@@ -220,5 +421,8 @@
   }
   .share-buttons-row {
     flex-direction: column;
+  }
+  .email-action-buttons-grid {
+    grid-template-columns: 1fr;
   }
 }

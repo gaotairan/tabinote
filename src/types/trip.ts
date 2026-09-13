@@ -33,6 +33,7 @@ export interface Member {
   name: string;
   avatarColor: string;
   role?: string; // "リーダー", "カメラ係", "会計" etc.
+  email?: string; // メールアドレス（しおりURLの送信先など）
 }
 
 export type PackingCategory =

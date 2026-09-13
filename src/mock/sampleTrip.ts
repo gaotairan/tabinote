@@ -57,9 +57,9 @@ export const SAMPLE_TRIP: Trip = {
   timeZoneOffset: 0,
   timeZoneName: '日本国内 (時差なし)',
   members: [
-    { id: 'm1', name: 'たろう', avatarColor: '#3b82f6', role: 'リーダー / 計画' },
-    { id: 'm2', name: 'はなこ', avatarColor: '#ec4899', role: 'カメラ係 / 美食担当' },
-    { id: 'm3', name: 'けんた', avatarColor: '#10b981', role: 'ドライバー / 会計' },
+    { id: 'm1', name: 'たろう', avatarColor: '#3b82f6', role: 'リーダー / 計画', email: 'taro@example.com' },
+    { id: 'm2', name: 'はなこ', avatarColor: '#ec4899', role: 'カメラ係 / 美食担当', email: 'hanako@example.com' },
+    { id: 'm3', name: 'けんた', avatarColor: '#10b981', role: 'ドライバー / 会計', email: 'kenta@example.com' },
   ],
   days: [
     {

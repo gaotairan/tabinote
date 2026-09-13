@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
   Calendar,
   MapPin,
@@ -7,20 +7,28 @@ import {
   Sun,
   Shield,
   Clock,
+  UserPlus,
+  Mail,
+  ExternalLink,
 } from 'lucide-react';
 import type { Trip } from '../../types/trip';
 import { differenceInCalendarDays, parseISO, isFuture, isToday } from 'date-fns';
+import { MemberManageModal } from './MemberManageModal';
 import './TripOverviewTab.css';
 
 interface TripOverviewTabProps {
   trip: Trip;
   onEditTrip: () => void;
+  onUpdateTrip: (updatedTrip: Trip) => void;
 }
 
 export const TripOverviewTab: React.FC<TripOverviewTabProps> = ({
   trip,
   onEditTrip,
+  onUpdateTrip,
 }) => {
+  const [isMemberModalOpen, setIsMemberModalOpen] = useState(false);
+
   const startDay = parseISO(trip.startDate);
   const endDay = parseISO(trip.endDate);
   const now = new Date();
@@ -97,9 +105,20 @@ export const TripOverviewTab: React.FC<TripOverviewTabProps> = ({
       <div className="overview-grid">
         {/* メンバーカード */}
         <div className="overview-card">
-          <div className="card-header-icon">
-            <Users size={18} className="icon-blue" />
-            <h3 className="card-title">参加メンバー ({trip.members.length}名)</h3>
+          <div className="card-header-between">
+            <div className="card-header-icon">
+              <Users size={18} className="icon-blue" />
+              <h3 className="card-title">参加メンバー ({trip.members.length}名)</h3>
+            </div>
+            <button
+              type="button"
+              className="btn-manage-members"
+              onClick={() => setIsMemberModalOpen(true)}
+              title="メンバーの追加・編集・削除・メール送信"
+            >
+              <UserPlus size={14} />
+              <span>メンバー管理</span>
+            </button>
           </div>
           <div className="members-grid">
             {trip.members.map((member) => (
@@ -115,9 +134,31 @@ export const TripOverviewTab: React.FC<TripOverviewTabProps> = ({
                   {member.role && (
                     <span className="member-role-badge">{member.role}</span>
                   )}
+                  {member.email && (
+                    <span className="member-email-sub" title={member.email}>
+                      <Mail size={10} />
+                      <span className="email-truncated">{member.email}</span>
+                    </span>
+                  )}
                 </div>
               </div>
             ))}
+
+            {/* メンバー追加クイックカード */}
+            <button
+              type="button"
+              className="member-card-item add-member-quick-btn"
+              onClick={() => setIsMemberModalOpen(true)}
+              title="参加メンバーを追加"
+            >
+              <div className="member-avatar-add">
+                <UserPlus size={16} />
+              </div>
+              <div className="member-info">
+                <span className="member-name add-text">追加・編集</span>
+                <span className="member-role-badge">メール送信も</span>
+              </div>
+            </button>
           </div>
         </div>
 
@@ -158,10 +199,18 @@ export const TripOverviewTab: React.FC<TripOverviewTabProps> = ({
             className="btn btn-secondary weather-link-btn"
           >
             <Sun size={16} />
-            <span>Yahoo!天気で予報を見る ↗</span>
+            <span>Yahoo!天気で予報を見る <ExternalLink size={13} style={{ display: 'inline', verticalAlign: 'middle' }} /></span>
           </a>
         </div>
       </div>
+
+      {/* メンバー管理モーダル */}
+      <MemberManageModal
+        isOpen={isMemberModalOpen}
+        onClose={() => setIsMemberModalOpen(false)}
+        trip={trip}
+        onUpdateTrip={onUpdateTrip}
+      />
     </div>
   );
 };

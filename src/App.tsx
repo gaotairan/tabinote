@@ -237,6 +237,7 @@ export const App: React.FC = () => {
               <TripOverviewTab
                 trip={activeTrip}
                 onEditTrip={() => setIsEditOpen(true)}
+                onUpdateTrip={handleUpdateTrip}
               />
             )}
             {activeTab === 'timeline' && (
@@ -268,14 +269,16 @@ export const App: React.FC = () => {
       </main>
 
       {/* 新規しおり作成モーダル */}
-      <CreateTripModal
-        isOpen={isCreateOpen}
-        onClose={() => setIsCreateOpen(false)}
-        onSaveTrip={handleSaveNewTrip}
-      />
+      {isCreateOpen && (
+        <CreateTripModal
+          isOpen={isCreateOpen}
+          onClose={() => setIsCreateOpen(false)}
+          onSaveTrip={handleSaveNewTrip}
+        />
+      )}
 
       {/* しおり編集モーダル */}
-      {activeTrip && (
+      {activeTrip && isEditOpen && (
         <CreateTripModal
           isOpen={isEditOpen}
           onClose={() => setIsEditOpen(false)}
@@ -285,18 +288,20 @@ export const App: React.FC = () => {
       )}
 
       {/* Googleカレンダー連携・自動生成モーダル */}
-      <GoogleCalendarImportModal
-        isOpen={isCalendarImportOpen}
-        onClose={() => setIsCalendarImportOpen(false)}
-        onTripGenerated={(trip) => {
-          setTrips(storageService.getTrips());
-          setActiveTripId(trip.id);
-          setActiveTab('timeline'); // 生成後はタイムラインをすぐ確認できるように
-        }}
-      />
+      {isCalendarImportOpen && (
+        <GoogleCalendarImportModal
+          isOpen={isCalendarImportOpen}
+          onClose={() => setIsCalendarImportOpen(false)}
+          onTripGenerated={(trip) => {
+            setTrips(storageService.getTrips());
+            setActiveTripId(trip.id);
+            setActiveTab('timeline'); // 生成後はタイムラインをすぐ確認できるように
+          }}
+        />
+      )}
 
       {/* 共有モーダル */}
-      {activeTrip && (
+      {activeTrip && isShareOpen && (
         <ShareModal
           isOpen={isShareOpen}
           onClose={() => setIsShareOpen(false)}
