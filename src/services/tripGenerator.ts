@@ -9,7 +9,16 @@ import type {
 } from '../types/trip';
 import type { RawCalendarEvent } from './icsParser';
 import { PRESET_COVERS } from '../mock/sampleTrip';
-import { inferTimeZone } from '../utils/timezone';
+import { inferTimeZone, shiftDateTime } from '../utils/timezone';
+
+export interface GenerateTripOptions {
+  customTitle?: string;
+  customDestination?: string;
+  coverUrl?: string;
+  targetTimeZoneOffset?: number; // 日本時間(JST)との時差 (現地 - JST。例: バルセロナ夏時間なら -7)
+  targetTimeZoneName?: string;
+  timeConvertMode?: 'convert_to_local' | 'keep_original'; // 'convert_to_local': JSTから現地時間に時差換算, 'keep_original': そのまま
+}
 
 /**
  * イベントのテキストからカテゴリーを判定する
@@ -96,33 +105,99 @@ function generateDefaultPackingList(): PackingItem[] {
  */
 export function generateTripFromEvents(
   events: RawCalendarEvent[],
-  options?: {
-    customTitle?: string;
-    customDestination?: string;
-    coverUrl?: string;
-  }
+  options?: GenerateTripOptions
 ): Trip {
   if (!events || events.length === 0) {
     throw new Error('予定が見つかりませんでした');
   }
 
-  // 現地時間の日付文字列（YYYY-MM-DD）でソート
-  const getEventDate = (ev: RawCalendarEvent) =>
-    ev.localDateStr || format(ev.start, 'yyyy-MM-dd');
+  // 目的地とタイトルの推測
+  let inferredDestination = options?.customDestination || '';
+  let inferredTitle = options?.customTitle || '';
 
-  const sorted = [...events].sort((a, b) => {
-    const dComp = getEventDate(a).localeCompare(getEventDate(b));
-    if (dComp !== 0) return dComp;
-    const aTime = a.localTimeStr || (a.isAllDay ? '00:00' : format(a.start, 'HH:mm'));
-    const bTime = b.localTimeStr || (b.isAllDay ? '00:00' : format(b.start, 'HH:mm'));
-    return aTime.localeCompare(bTime);
+  // タイムゾーンの決定
+  let effectiveOffset = options?.targetTimeZoneOffset;
+  let effectiveTzName = options?.targetTimeZoneName;
+
+  if (effectiveOffset === undefined) {
+    const allTexts = events
+      .map((e) => `${e.summary} ${e.location || ''} ${e.description || ''}`)
+      .join(' ');
+    const primaryTimeZone = events.find((e) => e.timeZone)?.timeZone;
+    const inferredTz = inferTimeZone(`${inferredDestination} ${inferredTitle} ${allTexts}`, primaryTimeZone);
+    if (inferredTz) {
+      effectiveOffset = inferredTz.offset;
+      effectiveTzName = inferredTz.name;
+    } else {
+      effectiveOffset = 0;
+      effectiveTzName = '日本国内 / 韓国 (時差なし)';
+    }
+  }
+
+  const timeConvertMode = options?.timeConvertMode || 'convert_to_local';
+
+  // 各イベントを現地時間・現地日付に解決
+  interface ResolvedEvent {
+    raw: RawCalendarEvent;
+    localDateStr: string;
+    localTimeStr: string;
+    localEndTimeStr?: string;
+  }
+
+  const resolvedEvents: ResolvedEvent[] = events.map((ev) => {
+    const baseDate = ev.localDateStr || format(ev.start, 'yyyy-MM-dd');
+    const baseTime = ev.isAllDay ? '終日' : ev.localTimeStr || format(ev.start, 'HH:mm');
+    const baseEndTime = ev.localEndTimeStr || (ev.end && !ev.isAllDay ? format(ev.end, 'HH:mm') : undefined);
+
+    if (ev.isAllDay) {
+      return {
+        raw: ev,
+        localDateStr: baseDate,
+        localTimeStr: '終日',
+        localEndTimeStr: undefined,
+      };
+    }
+
+    if (timeConvertMode === 'convert_to_local' && effectiveOffset !== 0) {
+      // 日本時間(JST)から現地時間にシフト換算
+      const startShifted = shiftDateTime(baseDate, baseTime, effectiveOffset);
+      const endShifted = baseEndTime
+        ? shiftDateTime(baseDate, baseEndTime, effectiveOffset)
+        : undefined;
+
+      return {
+        raw: ev,
+        localDateStr: startShifted.dateStr,
+        localTimeStr: startShifted.timeStr || baseTime,
+        localEndTimeStr: endShifted?.timeStr || undefined,
+      };
+    }
+
+    // keep_original (または時差0): 生の数字またはカレンダーの時刻をそのまま現地時間として採用
+    const directDate = ev.rawDateStr || baseDate;
+    const directTime = ev.rawTimeStr || baseTime;
+    return {
+      raw: ev,
+      localDateStr: directDate,
+      localTimeStr: directTime,
+      localEndTimeStr: baseEndTime,
+    };
   });
 
-  const firstEvent = sorted[0];
-  const lastEvent = sorted[sorted.length - 1];
+  // 現地日付・時刻順にソート
+  resolvedEvents.sort((a, b) => {
+    const dComp = a.localDateStr.localeCompare(b.localDateStr);
+    if (dComp !== 0) return dComp;
+    if (a.localTimeStr === '終日') return -1;
+    if (b.localTimeStr === '終日') return 1;
+    return a.localTimeStr.localeCompare(b.localTimeStr);
+  });
 
-  const startDateStr = getEventDate(firstEvent);
-  const endDateStr = getEventDate(lastEvent);
+  const firstEvent = resolvedEvents[0];
+  const lastEvent = resolvedEvents[resolvedEvents.length - 1];
+
+  const startDateStr = firstEvent.localDateStr;
+  const endDateStr = lastEvent.localDateStr;
 
   // 開始日〜終了日の日数を算出
   const startDay = parseISO(startDateStr);
@@ -132,7 +207,6 @@ export function generateTripFromEvents(
   // 日付ごとのマップを作成
   const daysMap = new Map<string, ScheduleItem[]>();
 
-  // 期間内の全日を初期化
   for (let i = 0; i < totalDays; i++) {
     const curDate = new Date(startDay);
     curDate.setDate(curDate.getDate() + i);
@@ -140,26 +214,14 @@ export function generateTripFromEvents(
     daysMap.set(dateStr, []);
   }
 
-  // 目的地とタイトルの推測
-  let inferredDestination = options?.customDestination || '';
-  let inferredTitle = options?.customTitle || '';
-
-  // イベントを日別に振り分け（現地日付を使用）
-  for (const ev of sorted) {
-    const eventDateStr = getEventDate(ev);
-    const dayItems = daysMap.get(eventDateStr);
+  // イベントを日別に振り分け
+  for (const item of resolvedEvents) {
+    const ev = item.raw;
+    const dayItems = daysMap.get(item.localDateStr);
 
     if (dayItems) {
       const matchText = `${ev.summary} ${ev.location || ''} ${ev.description || ''}`;
       const { category, transportType } = inferCategory(matchText);
-
-      // 現地時刻をそのまま使用（時差変換による狂いを防止）
-      const time = ev.isAllDay
-        ? '終日'
-        : ev.localTimeStr || format(ev.start, 'HH:mm');
-      const endTime =
-        ev.localEndTimeStr ||
-        (ev.end && !ev.isAllDay ? format(ev.end, 'HH:mm') : undefined);
 
       const location = ev.location?.trim();
       const locationUrl = location
@@ -168,8 +230,8 @@ export function generateTripFromEvents(
 
       dayItems.push({
         id: 'item-' + Math.random().toString(36).substr(2, 9),
-        time,
-        endTime,
+        time: item.localTimeStr,
+        endTime: item.localEndTimeStr,
         title: ev.summary,
         category,
         transportType,
@@ -178,7 +240,7 @@ export function generateTripFromEvents(
         memo: ev.description?.trim(),
       });
 
-      // 目的地の推測（もし未設定なら最初の場所やサマリーから）
+      // 目的地の推測（もし未設定なら）
       if (!inferredDestination) {
         if (location) {
           inferredDestination = location.split(/[,、\s->]/)[0].trim();
@@ -203,7 +265,6 @@ export function generateTripFromEvents(
   const days: DaySchedule[] = [];
   let dayIndex = 1;
   daysMap.forEach((items, dateStr) => {
-    // 時間順にソート（終日は上）
     items.sort((a, b) => {
       if (a.time === '終日') return -1;
       if (b.time === '終日') return 1;
@@ -222,13 +283,6 @@ export function generateTripFromEvents(
   const tripId = 'trip-' + Date.now();
   const cover = options?.coverUrl || PRESET_COVERS[1].url;
 
-  // 時差の自動推測（イベント情報や目的地から判定）
-  const allTexts = sorted
-    .map((e) => `${e.summary} ${e.location || ''} ${e.description || ''}`)
-    .join(' ');
-  const primaryTimeZone = sorted.find((e) => e.timeZone)?.timeZone;
-  const inferredTz = inferTimeZone(`${inferredDestination} ${inferredTitle} ${allTexts}`, primaryTimeZone);
-
   return {
     id: tripId,
     title: inferredTitle,
@@ -237,7 +291,7 @@ export function generateTripFromEvents(
     startDate: startDateStr,
     endDate: endDateStr,
     coverImage: cover,
-    themeColor: '#3b82f6', // デフォルトブルー
+    themeColor: '#3b82f6',
     password: '',
     memo: 'Googleカレンダーから自動作成されたしおりです。自由に編集してオリジナルのしおりを完成させましょう！',
     members: [
@@ -247,8 +301,8 @@ export function generateTripFromEvents(
     packingList: generateDefaultPackingList(),
     souvenirs: [],
     expenses: [],
-    timeZoneOffset: inferredTz ? inferredTz.offset : 0,
-    timeZoneName: inferredTz ? inferredTz.name : undefined,
+    timeZoneOffset: effectiveOffset,
+    timeZoneName: effectiveTzName,
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
   };

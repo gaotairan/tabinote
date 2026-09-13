@@ -5,9 +5,12 @@ export interface RawCalendarEvent {
   isAllDay: boolean;
   location?: string;
   description?: string;
-  localDateStr?: string; // "2026-09-22" (現地の日付)
-  localTimeStr?: string; // "10:00" (現地の開始時刻)
-  localEndTimeStr?: string; // "11:30" (現地の終了時刻)
+  localDateStr?: string; // カレンダー基準(通常JST)の日付 "2026-09-22"
+  localTimeStr?: string; // カレンダー基準(通常JST)の開始時刻 "10:00"
+  localEndTimeStr?: string; // カレンダー基準(通常JST)の終了時刻 "11:30"
+  rawDateStr?: string; // 元の生の日付文字列
+  rawTimeStr?: string; // 元の生の時刻文字列
+  isUtc?: boolean;
   timeZone?: string;
 }
 
@@ -42,6 +45,10 @@ export function parseICS(icsContent: string): RawCalendarEvent[] {
           localDateStr: currentEvent.localDateStr,
           localTimeStr: currentEvent.localTimeStr,
           localEndTimeStr: currentEvent.localEndTimeStr,
+          rawDateStr: currentEvent.rawDateStr,
+          rawTimeStr: currentEvent.rawTimeStr,
+          isUtc: currentEvent.isUtc,
+          timeZone: currentEvent.timeZone,
         });
       }
       inEvent = false;
@@ -63,6 +70,14 @@ export function parseICS(icsContent: string): RawCalendarEvent[] {
 
     const key = keyPart.split(';')[0].toUpperCase();
 
+    // TZIDパラメータの抽出 (例: DTSTART;TZID=Asia/Tokyo:...)
+    if (keyPart.includes('TZID=')) {
+      const match = keyPart.match(/TZID=([^;:]+)/i);
+      if (match && match[1]) {
+        currentEvent.timeZone = match[1].replace(/["']/g, '').trim();
+      }
+    }
+
     switch (key) {
       case 'SUMMARY':
         currentEvent.summary = value;
@@ -80,6 +95,9 @@ export function parseICS(icsContent: string): RawCalendarEvent[] {
           currentEvent.isAllDay = parsed.isAllDay;
           currentEvent.localDateStr = parsed.dateStr;
           currentEvent.localTimeStr = parsed.timeStr;
+          currentEvent.rawDateStr = parsed.rawDateStr;
+          currentEvent.rawTimeStr = parsed.rawTimeStr;
+          currentEvent.isUtc = parsed.isUtc;
         }
         break;
       }
@@ -106,7 +124,15 @@ export function parseICS(icsContent: string): RawCalendarEvent[] {
 function parseIcsDate(
   val: string,
   _keyPart?: string
-): { date: Date; isAllDay: boolean; dateStr: string; timeStr?: string } | null {
+): {
+  date: Date;
+  isAllDay: boolean;
+  dateStr: string;
+  timeStr?: string;
+  rawDateStr?: string;
+  rawTimeStr?: string;
+  isUtc?: boolean;
+} | null {
   const isAllDay = val.length === 8 && !val.includes('T');
 
   if (isAllDay) {
@@ -120,10 +146,12 @@ function parseIcsDate(
       date: new Date(year, month, day, 0, 0, 0),
       isAllDay: true,
       dateStr: `${yStr}-${mStr}-${dStr}`,
+      rawDateStr: `${yStr}-${mStr}-${dStr}`,
     };
   }
 
   // 時刻付き "20261010T083000" or "20261010T083000Z"
+  const isUtc = val.endsWith('Z');
   const cleanVal = val.replace('Z', '');
   const [datePart, timePart] = cleanVal.split('T');
   if (!datePart || !timePart) return null;
@@ -141,13 +169,48 @@ function parseIcsDate(
   const minute = parseInt(minStr, 10) || 0;
   const second = parseInt(timePart.substring(4, 6), 10) || 0;
 
-  const dateStr = `${yStr}-${mStr}-${dStr}`;
-  const timeStr = `${hStr}:${minStr}`;
+  const rawDateStr = `${yStr}-${mStr}-${dStr}`;
+  const rawTimeStr = `${hStr}:${minStr}`;
+
+  if (isUtc) {
+    // UTCエポック時刻
+    const epochUtc = Date.UTC(year, month, day, hour, minute, second);
+    const date = new Date(epochUtc);
+
+    // 日本時間 (JST: UTC+9) に換算した日付と時刻
+    const jstEpoch = epochUtc + 9 * 60 * 60 * 1000;
+    const jstDate = new Date(jstEpoch);
+    const jstY = jstDate.getUTCFullYear();
+    const jstM = (jstDate.getUTCMonth() + 1).toString().padStart(2, '0');
+    const jstD = jstDate.getUTCDate().toString().padStart(2, '0');
+    const jstH = jstDate.getUTCHours().toString().padStart(2, '0');
+    const jstMin = jstDate.getUTCMinutes().toString().padStart(2, '0');
+
+    const dateStr = `${jstY}-${jstM}-${jstD}`;
+    const timeStr = `${jstH}:${jstMin}`;
+
+    return {
+      date,
+      isAllDay: false,
+      dateStr,
+      timeStr,
+      rawDateStr,
+      rawTimeStr,
+      isUtc: true,
+    };
+  }
+
+  // ローカル時刻 (Zなし)
+  const dateStr = rawDateStr;
+  const timeStr = rawTimeStr;
 
   return {
     date: new Date(year, month, day, hour, minute, second),
     isAllDay: false,
     dateStr,
     timeStr,
+    rawDateStr,
+    rawTimeStr,
+    isUtc: false,
   };
 }

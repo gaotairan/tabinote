@@ -172,3 +172,68 @@ export function inferTimeZone(
 
   return null;
 }
+
+export interface CalendarSourceTimeZone {
+  id: string;
+  name: string;
+  offsetFromJst: number; // 日本時間(JST: UTC+9)との時差 (カレンダーの時刻 - JST)
+}
+
+export const CALENDAR_SOURCE_TIMEZONES: CalendarSourceTimeZone[] = [
+  { id: 'jst', name: '🇯🇵 日本時間 (JST / UTC+9) ※通常はこちら', offsetFromJst: 0 },
+  { id: 'utc', name: '🌐 協定世界時 (UTC / GMT)', offsetFromJst: -9 },
+  { id: 'local_same', name: '📍 旅行先の現地時間と同じ', offsetFromJst: 0 },
+];
+
+/**
+ * 日付文字列 "YYYY-MM-DD" と 時刻文字列 "HH:mm" を時差換算して、新しい日付と時刻を返す
+ * @param dateStr "YYYY-MM-DD"
+ * @param timeStr "HH:mm" または "終日"
+ * @param offsetHours 加算する時差時間（例: 日本時間からバルセロナ現地時間へなら -7）
+ */
+export function shiftDateTime(
+  dateStr: string,
+  timeStr: string | undefined,
+  offsetHours: number
+): { dateStr: string; timeStr?: string; dayOffset: number } {
+  if (!timeStr || timeStr === '終日') {
+    return { dateStr, timeStr: timeStr || '終日', dayOffset: 0 };
+  }
+
+  const [hStr, mStr] = timeStr.split(':');
+  const h = parseInt(hStr, 10);
+  const m = parseInt(mStr, 10);
+  if (isNaN(h) || isNaN(m)) {
+    return { dateStr, timeStr, dayOffset: 0 };
+  }
+
+  const [yStr, monStr, dStr] = dateStr.split('-');
+  const y = parseInt(yStr, 10);
+  const mon = parseInt(monStr, 10) - 1;
+  const d = parseInt(dStr, 10);
+
+  if (isNaN(y) || isNaN(mon) || isNaN(d)) {
+    return { dateStr, timeStr, dayOffset: 0 };
+  }
+
+  // UTCエポック分数で計算してタイムゾーン汚染を防ぐ
+  const baseEpochMinutes = Date.UTC(y, mon, d, h, m) / (60 * 1000);
+  const shiftedEpochMinutes = baseEpochMinutes + Math.round(offsetHours * 60);
+
+  const shiftedDate = new Date(shiftedEpochMinutes * 60 * 1000);
+  const newY = shiftedDate.getUTCFullYear();
+  const newMon = (shiftedDate.getUTCMonth() + 1).toString().padStart(2, '0');
+  const newD = shiftedDate.getUTCDate().toString().padStart(2, '0');
+  const newH = shiftedDate.getUTCHours().toString().padStart(2, '0');
+  const newM = shiftedDate.getUTCMinutes().toString().padStart(2, '0');
+
+  const newDateStr = `${newY}-${newMon}-${newD}`;
+  const newTimeStr = `${newH}:${newM}`;
+
+  // 日付差分の計算
+  const oldDayEpoch = Math.floor(Date.UTC(y, mon, d) / (86400 * 1000));
+  const newDayEpoch = Math.floor(Date.UTC(newY, shiftedDate.getUTCMonth(), shiftedDate.getUTCDate()) / (86400 * 1000));
+  const dayOffset = newDayEpoch - oldDayEpoch;
+
+  return { dateStr: newDateStr, timeStr: newTimeStr, dayOffset };
+}

@@ -178,19 +178,36 @@ export async function fetchCalendarEvents(
       if (isAllDay) {
         localDateStr = item.start.date; // "2026-09-21"
       } else if (item.start.dateTime) {
-        // "2026-09-21T16:55:00+09:00" または "2026-09-22T10:00:00+02:00"
-        const [dPart, tPart] = item.start.dateTime.split('T');
-        localDateStr = dPart;
-        if (tPart) {
-          localTimeStr = tPart.substring(0, 5); // "16:55"
-        }
+        const startDt = new Date(item.start.dateTime);
+        // 日本時間 (JST: UTC+9) の日時を算出
+        const jstEpoch = startDt.getTime() + 9 * 60 * 60 * 1000;
+        const jstDate = new Date(jstEpoch);
+        const jstY = jstDate.getUTCFullYear();
+        const jstM = (jstDate.getUTCMonth() + 1).toString().padStart(2, '0');
+        const jstD = jstDate.getUTCDate().toString().padStart(2, '0');
+        const jstH = jstDate.getUTCHours().toString().padStart(2, '0');
+        const jstMin = jstDate.getUTCMinutes().toString().padStart(2, '0');
+
+        localDateStr = `${jstY}-${jstM}-${jstD}`;
+        localTimeStr = `${jstH}:${jstMin}`;
       }
 
       if (item.end?.dateTime) {
-        const [, tPart] = item.end.dateTime.split('T');
-        if (tPart) {
-          localEndTimeStr = tPart.substring(0, 5);
-        }
+        const endDt = new Date(item.end.dateTime);
+        const jstEpoch = endDt.getTime() + 9 * 60 * 60 * 1000;
+        const jstDate = new Date(jstEpoch);
+        const jstH = jstDate.getUTCHours().toString().padStart(2, '0');
+        const jstMin = jstDate.getUTCMinutes().toString().padStart(2, '0');
+        localEndTimeStr = `${jstH}:${jstMin}`;
+      }
+
+      // 生の文字列表記（split('T')）
+      let rawDateStr: string | undefined = undefined;
+      let rawTimeStr: string | undefined = undefined;
+      if (item.start?.dateTime) {
+        const [dPart, tPart] = item.start.dateTime.split('T');
+        rawDateStr = dPart;
+        if (tPart) rawTimeStr = tPart.substring(0, 5);
       }
 
       const start = isAllDay
@@ -212,6 +229,8 @@ export async function fetchCalendarEvents(
         localDateStr,
         localTimeStr,
         localEndTimeStr,
+        rawDateStr,
+        rawTimeStr,
         timeZone: item.start.timeZone,
       };
     });

@@ -11,6 +11,8 @@ import {
   Clock,
   MapPin,
   FileUp,
+  Globe,
+  ArrowRightLeft,
 } from 'lucide-react';
 import { Modal } from '../common/Modal';
 import { parseICS } from '../../services/icsParser';
@@ -21,6 +23,12 @@ import {
   fetchAllCalendarEvents,
 } from '../../services/googleCalendar';
 import { storageService } from '../../services/storage';
+import {
+  TIMEZONE_PRESETS,
+  CALENDAR_SOURCE_TIMEZONES,
+  inferTimeZone,
+  shiftDateTime,
+} from '../../utils/timezone';
 import type { Trip } from '../../types/trip';
 import confetti from 'canvas-confetti';
 import './GoogleCalendarImportModal.css';
@@ -46,6 +54,12 @@ export const GoogleCalendarImportModal: React.FC<GoogleCalendarImportModalProps>
   const [customDestination, setCustomDestination] = useState('');
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  // タイムゾーン設定用
+  const [calendarSourceTz, setCalendarSourceTz] = useState('jst'); // 'jst' | 'utc' | 'local_same'
+  const [targetTzOffset, setTargetTzOffset] = useState<number>(0);
+  const [targetTzName, setTargetTzName] = useState<string>('日本国内 / 韓国 (時差なし)');
+  const [timeConvertMode, setTimeConvertMode] = useState<'convert_to_local' | 'keep_original'>('convert_to_local');
+
   // Google OAuth連携用
   const [clientId, setClientId] = useState(() => storageService.getGoogleClientId());
   const [oauthStartDate, setOauthStartDate] = useState(() => {
@@ -65,6 +79,26 @@ export const GoogleCalendarImportModal: React.FC<GoogleCalendarImportModalProps>
     return d.toISOString().split('T')[0];
   });
 
+  // タイムゾーンの自動推測
+  const autoDetectTimeZone = (dest: string, eventsList: RawCalendarEvent[]) => {
+    const allTexts = `${dest} ` + eventsList.map((e) => `${e.summary} ${e.location || ''}`).join(' ');
+    const primaryTz = eventsList.find((e) => e.timeZone)?.timeZone;
+    const detected = inferTimeZone(allTexts, primaryTz);
+    if (detected) {
+      setTargetTzOffset(detected.offset);
+      setTargetTzName(detected.name);
+    }
+  };
+
+  const handleDestinationChange = (dest: string) => {
+    setCustomDestination(dest);
+    const inferred = inferTimeZone(dest);
+    if (inferred) {
+      setTargetTzOffset(inferred.offset);
+      setTargetTzName(inferred.name);
+    }
+  };
+
   // ICSファイル読み込み処理
   const handleIcsFile = (file: File) => {
     setError(null);
@@ -80,11 +114,14 @@ export const GoogleCalendarImportModal: React.FC<GoogleCalendarImportModalProps>
           return;
         }
         setParsedEvents(events);
-        // 推測タイトル
+        // 推測目的地
+        let dest = '';
         const firstLoc = events.find((ev) => ev.location)?.location || '';
         if (firstLoc) {
-          setCustomDestination(firstLoc.split(/[,、\s]/)[0]);
+          dest = firstLoc.split(/[,、\s]/)[0];
+          setCustomDestination(dest);
         }
+        autoDetectTimeZone(dest, events);
       } catch (err: any) {
         setError('ファイルの解析に失敗しました: ' + (err.message || ''));
       } finally {
@@ -186,6 +223,8 @@ END:VCALENDAR`;
     setParsedEvents(events);
     setCustomTitle('北海道・小樽＆美瑛 2泊3日の旅 ☃️');
     setCustomDestination('北海道（札幌・小樽・旭川）');
+    setTargetTzOffset(0);
+    setTargetTzName('日本国内 / 韓国 (時差なし)');
     setError(null);
   };
 
@@ -196,6 +235,9 @@ END:VCALENDAR`;
       const trip = generateTripFromEvents(parsedEvents, {
         customTitle: customTitle || undefined,
         customDestination: customDestination || undefined,
+        targetTimeZoneOffset: targetTzOffset,
+        targetTimeZoneName: targetTzName,
+        timeConvertMode: timeConvertMode,
       });
 
       storageService.saveTrip(trip);
@@ -232,6 +274,7 @@ END:VCALENDAR`;
         return;
       }
       setParsedEvents(events);
+      autoDetectTimeZone(customDestination, events);
       setActiveTab('ics'); // プレビュー確認へ遷移
     } catch (err: any) {
       setError('Google連携エラー: ' + (err.message || ''));
@@ -287,6 +330,7 @@ END:VCALENDAR`;
     }
 
     setParsedEvents(events);
+    autoDetectTimeZone(customDestination, events);
     setActiveTab('ics');
   };
 
@@ -295,7 +339,7 @@ END:VCALENDAR`;
       isOpen={isOpen}
       onClose={onClose}
       title="Googleカレンダーから自動でしおりを作成"
-      maxWidth="640px"
+      maxWidth="680px"
     >
       <div className="import-modal-content">
         {/* タブナビゲーション */}
@@ -391,6 +435,8 @@ END:VCALENDAR`;
                       setParsedEvents([]);
                       setCustomTitle('');
                       setCustomDestination('');
+                      setTargetTzOffset(0);
+                      setTargetTzName('日本国内 / 韓国 (時差なし)');
                     }}
                   >
                     やり直す
@@ -410,53 +456,205 @@ END:VCALENDAR`;
 
                 <div className="form-group">
                   <label>主な目的地</label>
-                  <input
-                    type="text"
-                    className="form-input"
-                    value={customDestination}
-                    onChange={(e) => setCustomDestination(e.target.value)}
-                    placeholder="例: 北海道（札幌・小樽）"
-                  />
+                  <div className="input-with-icon">
+                    <MapPin size={16} className="input-icon" />
+                    <input
+                      type="text"
+                      className="form-input"
+                      value={customDestination}
+                      onChange={(e) => handleDestinationChange(e.target.value)}
+                      placeholder="例: スペイン・バルセロナ"
+                    />
+                  </div>
+                </div>
+
+                {/* タイムゾーン・時差設定カード */}
+                <div className="import-tz-card">
+                  <div className="import-tz-header">
+                    <div className="import-tz-title">
+                      <Globe size={16} className="tz-icon" />
+                      <strong>カレンダー時間 ＆ 現地時差設定</strong>
+                    </div>
+                    <span className="import-tz-badge">
+                      {targetTzOffset === 0
+                        ? '時差なし (日本国内)'
+                        : `日本との時差: ${targetTzOffset > 0 ? '+' : ''}${targetTzOffset}時間`}
+                    </span>
+                  </div>
+
+                  <div className="form-row">
+                    <div className="form-group flex-1">
+                      <label>① カレンダー元の時間設定</label>
+                      <select
+                        className="form-input"
+                        value={calendarSourceTz}
+                        onChange={(e) => setCalendarSourceTz(e.target.value)}
+                      >
+                        {CALENDAR_SOURCE_TIMEZONES.map((c) => (
+                          <option key={c.id} value={c.id}>
+                            {c.name}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+
+                    <div className="form-group flex-1">
+                      <label>② 旅行先の現地タイムゾーン</label>
+                      <select
+                        className="form-input"
+                        value={targetTzOffset}
+                        onChange={(e) => {
+                          const off = parseFloat(e.target.value);
+                          setTargetTzOffset(off);
+                          const p = TIMEZONE_PRESETS.find((item) => item.offset === off);
+                          if (p) setTargetTzName(p.name);
+                        }}
+                      >
+                        {TIMEZONE_PRESETS.map((p) => (
+                          <option key={p.id} value={p.offset}>
+                            {p.flag} {p.name}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+
+                  {/* 変換モード切り替え */}
+                  {targetTzOffset !== 0 && (
+                    <div className="tz-convert-mode-selector">
+                      <label className="mode-selector-label">
+                        <ArrowRightLeft size={13} />
+                        <span>カレンダー予定の取り込み方法</span>
+                      </label>
+                      <div className="tz-mode-options">
+                        <label
+                          className={`tz-mode-option ${
+                            timeConvertMode === 'convert_to_local' ? 'active' : ''
+                          }`}
+                        >
+                          <input
+                            type="radio"
+                            name="timeConvertMode"
+                            checked={timeConvertMode === 'convert_to_local'}
+                            onChange={() => setTimeConvertMode('convert_to_local')}
+                          />
+                          <div className="tz-mode-text">
+                            <strong>カレンダーの日本時間を現地時刻に自動換算（推奨）</strong>
+                            <span>
+                              カレンダーの時刻（JST）から時差（
+                              {targetTzOffset > 0 ? `+${targetTzOffset}h` : `${targetTzOffset}h`}
+                              ）分シフトしてしおりに登録します（日付またぎも自動調整）
+                            </span>
+                          </div>
+                        </label>
+
+                        <label
+                          className={`tz-mode-option ${
+                            timeConvertMode === 'keep_original' ? 'active' : ''
+                          }`}
+                        >
+                          <input
+                            type="radio"
+                            name="timeConvertMode"
+                            checked={timeConvertMode === 'keep_original'}
+                            onChange={() => setTimeConvertMode('keep_original')}
+                          />
+                          <div className="tz-mode-text">
+                            <strong>カレンダーの時刻をそのまま現地時間として登録</strong>
+                            <span>
+                              すでにカレンダーに「現地の時計の数字」で予定を入力してある場合はこちら
+                            </span>
+                          </div>
+                        </label>
+                      </div>
+                    </div>
+                  )}
                 </div>
 
                 <div className="events-preview-list">
-                  <label className="list-label">抽出されたタイムライン予定</label>
+                  <div className="events-preview-header">
+                    <label className="list-label">抽出されたタイムライン予定</label>
+                    <span className="events-preview-hint">
+                      {targetTzOffset !== 0 && timeConvertMode === 'convert_to_local'
+                        ? '※各予定は現地時間に換算されています'
+                        : '※カレンダーの時刻そのまま登録されます'}
+                    </span>
+                  </div>
                   <div className="events-scroll">
-                    {parsedEvents.map((ev, i) => (
-                      <div key={i} className="preview-event-card">
-                        <div className="preview-event-time">
-                          <Clock size={12} />
-                          <span>
-                            {ev.isAllDay
-                              ? '終日'
-                              : ev.localTimeStr ||
-                                ev.start.toLocaleTimeString([], {
-                                  hour: '2-digit',
-                                  minute: '2-digit',
-                                })}
-                          </span>
+                    {parsedEvents.map((ev, i) => {
+                      const baseDate = ev.localDateStr || '';
+                      const baseTime = ev.localTimeStr || (ev.isAllDay ? '終日' : '09:00');
+                      const baseEndTime = ev.localEndTimeStr;
+
+                      let displayTime = baseTime;
+                      let displayDate = baseDate;
+                      let subJstText = '';
+                      let dayShiftBadge = '';
+
+                      if (ev.isAllDay) {
+                        displayTime = '終日';
+                      } else if (timeConvertMode === 'convert_to_local' && targetTzOffset !== 0) {
+                        const shifted = shiftDateTime(baseDate, baseTime, targetTzOffset);
+                        displayDate = shifted.dateStr;
+                        const endShifted = baseEndTime
+                          ? shiftDateTime(baseDate, baseEndTime, targetTzOffset)
+                          : null;
+                        displayTime = endShifted
+                          ? `${shifted.timeStr} 〜 ${endShifted.timeStr}`
+                          : shifted.timeStr || baseTime;
+
+                        if (shifted.dayOffset === 1) dayShiftBadge = '+1日';
+                        else if (shifted.dayOffset > 1) dayShiftBadge = `+${shifted.dayOffset}日`;
+                        else if (shifted.dayOffset === -1) dayShiftBadge = '-1日';
+                        else if (shifted.dayOffset < -1) dayShiftBadge = `${shifted.dayOffset}日`;
+
+                        subJstText = `(元: JST ${baseTime}${baseEndTime ? `〜${baseEndTime}` : ''})`;
+                      } else {
+                        // そのまま
+                        displayTime = baseEndTime ? `${baseTime} 〜 ${baseEndTime}` : baseTime;
+                      }
+
+                      return (
+                        <div key={i} className="preview-event-card">
+                          <div className="preview-event-time">
+                            <Clock size={12} />
+                            <div className="time-display-stack">
+                              <div className="time-main-line">
+                                <span className="main-time">{displayTime}</span>
+                                {dayShiftBadge && (
+                                  <span className="day-shift-badge">{dayShiftBadge}</span>
+                                )}
+                              </div>
+                              {subJstText && <span className="sub-jst-label">{subJstText}</span>}
+                            </div>
+                          </div>
+                          <div className="preview-event-body flex-1">
+                            <strong className="preview-event-title">{ev.summary}</strong>
+                            <div className="preview-event-meta">
+                              {displayDate && (
+                                <span className="preview-event-date">{displayDate}</span>
+                              )}
+                              {ev.location && (
+                                <span className="preview-event-loc">
+                                  <MapPin size={11} />
+                                  {ev.location}
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                          <button
+                            type="button"
+                            className="action-icon-btn delete-btn"
+                            title="この予定をしおりから除外"
+                            onClick={() => {
+                              setParsedEvents(parsedEvents.filter((_, idx) => idx !== i));
+                            }}
+                          >
+                            ✕
+                          </button>
                         </div>
-                        <div className="preview-event-body flex-1">
-                          <strong className="preview-event-title">{ev.summary}</strong>
-                          {ev.location && (
-                            <span className="preview-event-loc">
-                              <MapPin size={12} />
-                              {ev.location}
-                            </span>
-                          )}
-                        </div>
-                        <button
-                          type="button"
-                          className="action-icon-btn delete-btn"
-                          title="この予定をしおりから除外"
-                          onClick={() => {
-                            setParsedEvents(parsedEvents.filter((_, idx) => idx !== i));
-                          }}
-                        >
-                          ✕
-                        </button>
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 </div>
 
