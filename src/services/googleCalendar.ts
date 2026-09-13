@@ -45,6 +45,14 @@ export async function getGoogleAccessToken(clientId: string): Promise<string> {
       const tokenClient = window.google.accounts.oauth2.initTokenClient({
         client_id: clientId,
         scope: SCOPES,
+        error_callback: (err: any) => {
+          reject(
+            new Error(
+              err?.message ||
+                'Googleログイン画面がブロックされたか閉じられました。ポップアップを許可してください。'
+            )
+          );
+        },
         callback: (response: any) => {
           if (response.error) {
             reject(new Error(response.error_description || response.error));
