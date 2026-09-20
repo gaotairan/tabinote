@@ -11,6 +11,7 @@ import {
   Mail,
   ExternalLink,
   Printer,
+  CalendarCheck2,
 } from 'lucide-react';
 import type { Trip } from '../../types/trip';
 import { differenceInCalendarDays, parseISO, isFuture, isToday } from 'date-fns';
@@ -23,6 +24,7 @@ interface TripOverviewTabProps {
   onEditTrip: () => void;
   onUpdateTrip: (updatedTrip: Trip) => void;
   onOpenPrint?: () => void;
+  onOpenCalendarUpdate?: () => void;
 }
 
 export const TripOverviewTab: React.FC<TripOverviewTabProps> = ({
@@ -30,6 +32,7 @@ export const TripOverviewTab: React.FC<TripOverviewTabProps> = ({
   onEditTrip,
   onUpdateTrip,
   onOpenPrint,
+  onOpenCalendarUpdate,
 }) => {
   const [isMemberModalOpen, setIsMemberModalOpen] = useState(false);
 
@@ -77,7 +80,17 @@ export const TripOverviewTab: React.FC<TripOverviewTabProps> = ({
               <Clock size={14} />
               <span>{countdownText} ({countdownSub})</span>
             </span>
-            <div style={{ display: 'flex', gap: '8px', marginLeft: 'auto' }}>
+            <div style={{ display: 'flex', gap: '8px', marginLeft: 'auto', flexWrap: 'wrap' }}>
+              {onOpenCalendarUpdate && (
+                <button
+                  className="edit-trip-btn glass-effect"
+                  onClick={onOpenCalendarUpdate}
+                  title="Googleカレンダーから予定を更新・マージ"
+                >
+                  <CalendarCheck2 size={15} />
+                  <span>カレンダー更新</span>
+                </button>
+              )}
               {onOpenPrint && (
                 <button
                   className="edit-trip-btn glass-effect"

@@ -9,6 +9,7 @@ import {
   Trash2,
   Clock,
   ArrowRight,
+  RefreshCw,
 } from 'lucide-react';
 import type { Trip } from '../../types/trip';
 import { differenceInCalendarDays, parseISO, isFuture, isToday } from 'date-fns';
@@ -21,6 +22,9 @@ interface HomeViewProps {
   onOpenCalendarImport: () => void;
   onDeleteTrip: (tripId: string) => void;
   onImportJson: (jsonStr: string) => void;
+  isCloudConnected?: boolean;
+  onSyncCloud?: () => void;
+  isSyncingCloud?: boolean;
 }
 
 export const HomeView: React.FC<HomeViewProps> = ({
@@ -30,6 +34,9 @@ export const HomeView: React.FC<HomeViewProps> = ({
   onOpenCalendarImport,
   onDeleteTrip,
   onImportJson,
+  isCloudConnected = false,
+  onSyncCloud,
+  isSyncingCloud = false,
 }) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -102,6 +109,17 @@ export const HomeView: React.FC<HomeViewProps> = ({
             <p className="section-subtitle">作成したしおりはオフラインでも確認できます</p>
           </div>
           <div className="section-tools">
+            {isCloudConnected && onSyncCloud && (
+              <button
+                className="btn btn-sm btn-outline-cloud"
+                onClick={onSyncCloud}
+                disabled={isSyncingCloud}
+                title="クラウドから最新のしおり一覧を同期・復元"
+              >
+                <RefreshCw size={14} className={isSyncingCloud ? 'spin' : ''} />
+                <span>{isSyncingCloud ? '同期中...' : 'クラウド同期'}</span>
+              </button>
+            )}
             <button
               className="btn btn-sm btn-outline"
               onClick={() => fileInputRef.current?.click()}
@@ -124,11 +142,27 @@ export const HomeView: React.FC<HomeViewProps> = ({
           <div className="empty-trips-card">
             <Calendar size={48} className="empty-icon" />
             <h4>しおりがまだありません</h4>
-            <p>Googleカレンダーから自動作成するか、新しいしおりを作ってみましょう！</p>
-            <button className="btn btn-primary" onClick={onOpenCalendarImport}>
-              <Calendar size={16} />
-              <span>Googleカレンダーから作成</span>
-            </button>
+            <p>
+              {isCloudConnected
+                ? 'クラウドからしおりを復元するか、Googleカレンダーから自動作成してみましょう！'
+                : 'Googleカレンダーから自動作成するか、新しいしおりを作ってみましょう！'}
+            </p>
+            <div style={{ display: 'flex', gap: '8px', justifyContent: 'center', flexWrap: 'wrap' }}>
+              {isCloudConnected && onSyncCloud && (
+                <button
+                  className="btn btn-outline"
+                  onClick={onSyncCloud}
+                  disabled={isSyncingCloud}
+                >
+                  <RefreshCw size={16} className={isSyncingCloud ? 'spin' : ''} />
+                  <span>{isSyncingCloud ? 'クラウド同期中...' : 'クラウドから復元'}</span>
+                </button>
+              )}
+              <button className="btn btn-primary" onClick={onOpenCalendarImport}>
+                <Calendar size={16} />
+                <span>Googleカレンダーから作成</span>
+              </button>
+            </div>
           </div>
         ) : (
           <div className="trips-grid">

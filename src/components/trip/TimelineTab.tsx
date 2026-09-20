@@ -22,6 +22,7 @@ import {
   ArrowUp,
   Layers,
   ListOrdered,
+  CalendarCheck2,
 } from 'lucide-react';
 import type {
   Trip,
@@ -40,11 +41,13 @@ import './TimelineTab.css';
 interface TimelineTabProps {
   trip: Trip;
   onUpdateTrip: (updatedTrip: Trip) => void;
+  onOpenCalendarUpdate?: () => void;
 }
 
 export const TimelineTab: React.FC<TimelineTabProps> = ({
   trip,
   onUpdateTrip,
+  onOpenCalendarUpdate,
 }) => {
   const [activeDayNumber, setActiveDayNumber] = useState(1);
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -548,6 +551,19 @@ export const TimelineTab: React.FC<TimelineTabProps> = ({
                 <span>🇯🇵 日本時間</span>
               </button>
             </div>
+
+            {onOpenCalendarUpdate && (
+              <button
+                type="button"
+                className="btn btn-secondary btn-sm timeline-cal-sync-btn"
+                onClick={onOpenCalendarUpdate}
+                title="Googleカレンダーから予定を取得してアップデート"
+                style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}
+              >
+                <CalendarCheck2 size={14} style={{ color: 'var(--primary)' }} />
+                <span>カレンダーから更新</span>
+              </button>
+            )}
           </div>
         </div>
       </div>
@@ -583,10 +599,22 @@ export const TimelineTab: React.FC<TimelineTabProps> = ({
                   <p className="day-subtitle">{currentDay.title}</p>
                 )}
               </div>
-              <button className="btn btn-primary" onClick={() => handleOpenAdd(currentDay.dayNumber)}>
-                <Plus size={16} />
-                <span>予定を追加</span>
-              </button>
+              <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                {onOpenCalendarUpdate && (
+                  <button
+                    className="btn btn-secondary"
+                    onClick={onOpenCalendarUpdate}
+                    title="Googleカレンダーから予定を同期・更新"
+                  >
+                    <CalendarCheck2 size={15} />
+                    <span>カレンダーから更新</span>
+                  </button>
+                )}
+                <button className="btn btn-primary" onClick={() => handleOpenAdd(currentDay.dayNumber)}>
+                  <Plus size={16} />
+                  <span>予定を追加</span>
+                </button>
+              </div>
             </div>
           )}
 
@@ -595,11 +623,19 @@ export const TimelineTab: React.FC<TimelineTabProps> = ({
             <div className="empty-timeline">
               <Clock size={40} className="empty-clock" />
               <h4>この日の予定はまだありません</h4>
-              <p>「予定を追加」ボタンからタイムラインを作成しましょう！</p>
-              <button className="btn btn-secondary" onClick={() => handleOpenAdd(currentDay.dayNumber)}>
-                <Plus size={16} />
-                <span>最初の予定を追加</span>
-              </button>
+              <p>「予定を追加」またはGoogleカレンダーからスケジュールを取り込みましょう！</p>
+              <div style={{ display: 'flex', gap: '8px', justifyContent: 'center', marginTop: '8px' }}>
+                <button className="btn btn-secondary" onClick={() => handleOpenAdd(currentDay.dayNumber)}>
+                  <Plus size={16} />
+                  <span>予定を追加</span>
+                </button>
+                {onOpenCalendarUpdate && (
+                  <button className="btn btn-primary" onClick={onOpenCalendarUpdate}>
+                    <CalendarCheck2 size={16} />
+                    <span>カレンダーから取り込む</span>
+                  </button>
+                )}
+              </div>
             </div>
           ) : (
             <>
@@ -692,6 +728,16 @@ export const TimelineTab: React.FC<TimelineTabProps> = ({
 
           {/* 全日程スクロール末尾のアクションエリア */}
           <div className="all-days-footer-actions">
+            {onOpenCalendarUpdate && (
+              <button
+                type="button"
+                className="btn btn-secondary"
+                onClick={onOpenCalendarUpdate}
+              >
+                <CalendarCheck2 size={16} />
+                <span>Googleカレンダーから更新</span>
+              </button>
+            )}
             <button
               type="button"
               className="btn btn-secondary"

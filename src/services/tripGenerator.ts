@@ -23,7 +23,7 @@ export interface GenerateTripOptions {
 /**
  * イベントのテキストからカテゴリーを判定する
  */
-function inferCategory(text: string): {
+export function inferCategory(text: string): {
   category: ScheduleCategory;
   transportType?: TransportType;
 } {

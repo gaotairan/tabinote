@@ -142,4 +142,97 @@ export const firestoreSync = {
       }
     );
   },
+
+  /**
+   * ローカルのしおり群とクラウドのしおり群を双方向同期・マージする
+   * - クラウドにあってローカルにないしおり（削除済みIDを除く）を復元
+   * - ローカルにあってクラウドにないしおりをクラウドへ自動バックアップ
+   * - 双方にあるしおりは updatedAt を比較して最新のものを採用
+   * @param localTrips 現在のローカルしおり一覧
+   * @param deletedIds 削除済みIDのリスト
+   * @returns マージ後の最新しおり一覧、および新しく復元・更新された件数
+   */
+  async syncAllTripsWithCloud(
+    localTrips: Trip[],
+    deletedIds: string[] = []
+  ): Promise<{ mergedTrips: Trip[]; addedCount: number; updatedCount: number }> {
+    if (!this.isAvailable()) {
+      return { mergedTrips: localTrips, addedCount: 0, updatedCount: 0 };
+    }
+
+    try {
+      const cloudTrips = await this.fetchAllTripsFromCloud();
+      if (!cloudTrips || cloudTrips.length === 0) {
+        // クラウドが空の場合、ローカルのしおりをクラウドへ初期バックアップ
+        for (const localTrip of localTrips) {
+          if (!deletedIds.includes(localTrip.id)) {
+            await this.saveTripToCloud(localTrip);
+          }
+        }
+        return { mergedTrips: localTrips, addedCount: 0, updatedCount: 0 };
+      }
+
+      let addedCount = 0;
+      let updatedCount = 0;
+      const tripMap = new Map<string, Trip>();
+
+      // まずローカルのしおりをマップに登録（削除済みは除外）
+      for (const trip of localTrips) {
+        if (!deletedIds.includes(trip.id)) {
+          tripMap.set(trip.id, trip);
+        }
+      }
+
+      // クラウドのしおりを検査してマージ
+      for (const cloudTrip of cloudTrips) {
+        // ユーザーがローカルで意図的に削除したものはスキップ
+        if (deletedIds.includes(cloudTrip.id)) {
+          continue;
+        }
+
+        const existingLocal = tripMap.get(cloudTrip.id);
+        if (!existingLocal) {
+          // ローカルに存在しないクラウドしおりを発見！取り込む
+          tripMap.set(cloudTrip.id, cloudTrip);
+          addedCount++;
+        } else {
+          // 両方に存在する場合、更新日時を比較
+          const cloudTime = cloudTrip.updatedAt ? new Date(cloudTrip.updatedAt).getTime() : 0;
+          const localTime = existingLocal.updatedAt ? new Date(existingLocal.updatedAt).getTime() : 0;
+
+          if (cloudTime > localTime) {
+            // クラウドの方が新しい
+            tripMap.set(cloudTrip.id, cloudTrip);
+            updatedCount++;
+          } else if (localTime > cloudTime) {
+            // ローカルの方が新しい場合はクラウド側を最新化
+            this.saveTripToCloud(existingLocal).catch(() => {});
+          }
+        }
+      }
+
+      // ローカルにしか存在しないしおりをクラウドへ自動バックアップ送信
+      for (const localTrip of localTrips) {
+        if (!deletedIds.includes(localTrip.id)) {
+          const inCloud = cloudTrips.some((ct) => ct.id === localTrip.id);
+          if (!inCloud) {
+            this.saveTripToCloud(localTrip).catch(() => {});
+          }
+        }
+      }
+
+      const mergedTrips = Array.from(tripMap.values());
+      // 作成日時/更新日時の新しい順にソート
+      mergedTrips.sort((a, b) => {
+        const timeA = new Date(a.updatedAt || a.createdAt || 0).getTime();
+        const timeB = new Date(b.updatedAt || b.createdAt || 0).getTime();
+        return timeB - timeA;
+      });
+
+      return { mergedTrips, addedCount, updatedCount };
+    } catch (e) {
+      console.error('Failed to sync trips with cloud:', e);
+      return { mergedTrips: localTrips, addedCount: 0, updatedCount: 0 };
+    }
+  },
 };

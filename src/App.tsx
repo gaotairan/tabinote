@@ -10,6 +10,7 @@ import type { TabType } from './components/layout/Navigation';
 import { HomeView } from './components/home/HomeView';
 import { CreateTripModal } from './components/home/CreateTripModal';
 import { GoogleCalendarImportModal } from './components/home/GoogleCalendarImportModal';
+import { GoogleCalendarUpdateModal } from './components/trip/GoogleCalendarUpdateModal';
 import { TripOverviewTab } from './components/trip/TripOverviewTab';
 import { TimelineTab } from './components/trip/TimelineTab';
 import { PackingTab } from './components/trip/PackingTab';
@@ -145,26 +146,75 @@ export const App: React.FC = () => {
   // クラウド常時同期管理
   const [isCloudConnected, setIsCloudConnected] = useState(() => firebaseService.isConfigured());
   const [isCloudSyncOpen, setIsCloudSyncOpen] = useState(false);
+  const [isSyncingAllCloud, setIsSyncingAllCloud] = useState(false);
 
-  // モーダル管理
-  const [isCreateOpen, setIsCreateOpen] = useState(false);
-  const [isEditOpen, setIsEditOpen] = useState(false);
-  const [isCalendarImportOpen, setIsCalendarImportOpen] = useState(false);
-  const [isShareOpen, setIsShareOpen] = useState(false);
-  const [isPrintOpen, setIsPrintOpen] = useState(false);
+  // クラウド全しおり同期・復元処理
+  const syncAllTrips = async (showToast = false) => {
+    if (!firebaseService.isConfigured()) return;
+    setIsSyncingAllCloud(true);
+    try {
+      const currentLocal = storageService.getTrips();
+      const deletedIds = storageService.getDeletedTripIds();
+      const result = await firestoreSync.syncAllTripsWithCloud(currentLocal, deletedIds);
 
-  // クラウド同期状態が変化した際の自動初期化
+      // マージ結果をローカルに反映
+      storageService.saveTrips(result.mergedTrips);
+      setTrips(result.mergedTrips);
+
+      if (result.addedCount > 0) {
+        setToast({
+          message: `☁️ クラウドから ${result.addedCount} 件のしおりを同期・復元しました！`,
+          type: 'success',
+        });
+      } else if (showToast) {
+        setToast({
+          message: '☁️ クラウドと同期しました（最新の状態です）',
+          type: 'success',
+        });
+      }
+    } catch (e) {
+      console.error('Failed to sync all trips with cloud:', e);
+      if (showToast) {
+        setToast({
+          message: '⚠️ クラウド同期中にエラーが発生しました',
+          type: 'error',
+        });
+      }
+    } finally {
+      setIsSyncingAllCloud(false);
+    }
+  };
+
+  // 初回マウント時およびクラウド接続状態変更時の自動同期
+  useEffect(() => {
+    if (isCloudConnected) {
+      syncAllTrips(false);
+    }
+  }, [isCloudConnected]);
+
+  // クラウド同期設定が変化した際の自動初期化
   const handleCloudConfigChanged = () => {
     const configured = firebaseService.isConfigured();
     setIsCloudConnected(configured);
-    if (configured && activeTrip) {
-      firestoreSync.saveTripToCloud(activeTrip);
+    if (configured) {
+      if (activeTrip) {
+        firestoreSync.saveTripToCloud(activeTrip);
+      }
+      syncAllTrips(true);
       setToast({
         message: '☁️ クラウド常時自動同期が有効化されました！',
         type: 'success',
       });
     }
   };
+
+  // モーダル管理
+  const [isCreateOpen, setIsCreateOpen] = useState(false);
+  const [isEditOpen, setIsEditOpen] = useState(false);
+  const [isCalendarImportOpen, setIsCalendarImportOpen] = useState(false);
+  const [isCalendarUpdateOpen, setIsCalendarUpdateOpen] = useState(false);
+  const [isShareOpen, setIsShareOpen] = useState(false);
+  const [isPrintOpen, setIsPrintOpen] = useState(false);
 
   // URLハッシュと同期
   useEffect(() => {
@@ -300,6 +350,25 @@ export const App: React.FC = () => {
     }
   };
 
+  // Googleカレンダー同期によるしおり更新完了時ハンドラー
+  const handleTripUpdatedFromCalendar = (
+    updatedTrip: Trip,
+    summary: { addedCount: number; skippedCount: number; expandedDaysCount: number }
+  ) => {
+    handleUpdateTrip(updatedTrip);
+    let msg = `📅 Googleカレンダーから ${summary.addedCount} 件の予定を反映しました！`;
+    if (summary.skippedCount > 0) {
+      msg += `（重複スキップ: ${summary.skippedCount}件）`;
+    }
+    if (summary.expandedDaysCount > 0) {
+      msg += `（日程 +${summary.expandedDaysCount}日拡張）`;
+    }
+    setToast({
+      message: msg,
+      type: 'success',
+    });
+  };
+
   // しおり作成
   const handleSaveNewTrip = (newTrip: Trip) => {
     storageService.saveTrip(newTrip);
@@ -352,6 +421,7 @@ export const App: React.FC = () => {
         }}
         onOpenCreate={() => setIsCreateOpen(true)}
         onOpenCalendarImport={() => setIsCalendarImportOpen(true)}
+        onOpenCalendarUpdate={() => setIsCalendarUpdateOpen(true)}
         onOpenShare={() => setIsShareOpen(true)}
         onOpenPrint={() => setIsPrintOpen(true)}
       />
@@ -400,6 +470,9 @@ export const App: React.FC = () => {
             onOpenCalendarImport={() => setIsCalendarImportOpen(true)}
             onDeleteTrip={handleDeleteTrip}
             onImportJson={handleImportJson}
+            isCloudConnected={isCloudConnected}
+            onSyncCloud={() => syncAllTrips(true)}
+            isSyncingCloud={isSyncingAllCloud}
           />
         ) : (
           <div className="trip-content-container fade-in">
@@ -409,12 +482,14 @@ export const App: React.FC = () => {
                 onEditTrip={() => setIsEditOpen(true)}
                 onUpdateTrip={handleUpdateTrip}
                 onOpenPrint={() => setIsPrintOpen(true)}
+                onOpenCalendarUpdate={() => setIsCalendarUpdateOpen(true)}
               />
             )}
             {activeTab === 'timeline' && (
               <TimelineTab
                 trip={activeTrip}
                 onUpdateTrip={handleUpdateTrip}
+                onOpenCalendarUpdate={() => setIsCalendarUpdateOpen(true)}
               />
             )}
             {activeTab === 'packing' && (
@@ -468,6 +543,16 @@ export const App: React.FC = () => {
             setActiveTripId(trip.id);
             setActiveTab('timeline'); // 生成後はタイムラインをすぐ確認できるように
           }}
+        />
+      )}
+
+      {/* 作成済みしおりのGoogleカレンダー同期・アップデートモーダル */}
+      {activeTrip && isCalendarUpdateOpen && (
+        <GoogleCalendarUpdateModal
+          isOpen={isCalendarUpdateOpen}
+          onClose={() => setIsCalendarUpdateOpen(false)}
+          trip={activeTrip}
+          onTripUpdated={handleTripUpdatedFromCalendar}
         />
       )}
 

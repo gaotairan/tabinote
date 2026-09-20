@@ -4,8 +4,39 @@ import { SAMPLE_TRIP } from '../mock/sampleTrip';
 const STORAGE_KEY_TRIPS = 'tabiori_trips_v1';
 const STORAGE_KEY_ACTIVE_ID = 'tabiori_active_trip_id_v1';
 const STORAGE_KEY_GOOGLE_CLIENT_ID = 'tabiori_google_client_id_v1';
+const STORAGE_KEY_DELETED_IDS = 'tabiori_deleted_trip_ids_v1';
 
 export const storageService = {
+  getDeletedTripIds(): string[] {
+    try {
+      const data = localStorage.getItem(STORAGE_KEY_DELETED_IDS);
+      return data ? JSON.parse(data) : [];
+    } catch {
+      return [];
+    }
+  },
+
+  markTripAsDeleted(id: string): void {
+    try {
+      const ids = this.getDeletedTripIds();
+      if (!ids.includes(id)) {
+        ids.push(id);
+        localStorage.setItem(STORAGE_KEY_DELETED_IDS, JSON.stringify(ids));
+      }
+    } catch (e) {
+      console.error('Failed to record deleted trip id:', e);
+    }
+  },
+
+  unmarkTripAsDeleted(id: string): void {
+    try {
+      const ids = this.getDeletedTripIds().filter((dId) => dId !== id);
+      localStorage.setItem(STORAGE_KEY_DELETED_IDS, JSON.stringify(ids));
+    } catch (e) {
+      console.error('Failed to unmark deleted trip id:', e);
+    }
+  },
+
   getTrips(): Trip[] {
     try {
       const data = localStorage.getItem(STORAGE_KEY_TRIPS);
@@ -35,6 +66,7 @@ export const storageService = {
   },
 
   saveTrip(trip: Trip): void {
+    this.unmarkTripAsDeleted(trip.id);
     const trips = this.getTrips();
     const index = trips.findIndex((t) => t.id === trip.id);
     const updatedTrip = {
@@ -51,6 +83,7 @@ export const storageService = {
   },
 
   deleteTrip(id: string): void {
+    this.markTripAsDeleted(id);
     const trips = this.getTrips().filter((t) => t.id !== id);
     this.saveTrips(trips);
     if (this.getActiveTripId() === id) {

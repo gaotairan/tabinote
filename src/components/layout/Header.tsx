@@ -1,5 +1,5 @@
 import React from 'react';
-import { Compass, Plus, Calendar, Share2, ArrowLeft, Printer, Cloud } from 'lucide-react';
+import { Compass, Plus, Calendar, Share2, ArrowLeft, Printer, Cloud, CalendarCheck2 } from 'lucide-react';
 import type { Trip } from '../../types/trip';
 import './Header.css';
 
@@ -10,6 +10,7 @@ interface HeaderProps {
   onBackToHome: () => void;
   onOpenCreate: () => void;
   onOpenCalendarImport: () => void;
+  onOpenCalendarUpdate?: () => void;
   onOpenShare?: () => void;
   onOpenExport?: () => void;
   onOpenPrint?: () => void;
@@ -22,6 +23,7 @@ export const Header: React.FC<HeaderProps> = ({
   onBackToHome,
   onOpenCreate,
   onOpenCalendarImport,
+  onOpenCalendarUpdate,
   onOpenShare,
   onOpenPrint,
 }) => {
@@ -87,6 +89,16 @@ export const Header: React.FC<HeaderProps> = ({
 
           {activeTrip ? (
             <>
+              {onOpenCalendarUpdate && (
+                <button
+                  className="btn btn-secondary cal-update-header-btn"
+                  onClick={onOpenCalendarUpdate}
+                  title="Googleカレンダーから予定を更新・マージ"
+                >
+                  <CalendarCheck2 size={16} />
+                  <span className="btn-text">カレンダー更新</span>
+                </button>
+              )}
               {onOpenPrint && (
                 <button
                   className="btn btn-secondary print-btn"
