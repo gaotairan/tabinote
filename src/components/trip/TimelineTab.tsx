@@ -36,6 +36,7 @@ import type {
   TransportType,
 } from '../../types/trip';
 import { Modal } from '../common/Modal';
+import { TimeScrollPicker } from '../common/TimeScrollPicker';
 import {
   convertTimeToTimezone,
   TIMEZONE_PRESETS,
@@ -993,27 +994,13 @@ export const TimelineTab: React.FC<TimelineTabProps> = ({
             />
           </div>
 
-          <div className="form-row">
-            <div className="form-group flex-1">
-              <label>開始時間（現地時間）</label>
-              <input
-                type="text"
-                className="form-input"
-                value={itemTime}
-                onChange={(e) => setItemTime(e.target.value)}
-                placeholder="例: 14:00"
-              />
-            </div>
-            <div className="form-group flex-1">
-              <label>終了時間（任意・現地時間）</label>
-              <input
-                type="text"
-                className="form-input"
-                value={itemEndTime}
-                onChange={(e) => setItemEndTime(e.target.value)}
-                placeholder="例: 16:30"
-              />
-            </div>
+          <div className="form-group">
+            <TimeScrollPicker
+              startTime={itemTime}
+              endTime={itemEndTime}
+              onStartTimeChange={setItemTime}
+              onEndTimeChange={setItemEndTime}
+            />
           </div>
 
           <div className="form-group">

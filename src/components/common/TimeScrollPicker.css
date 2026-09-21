@@ -1,0 +1,557 @@
+/* ========================================================
+   TimeScrollPicker (スクロールタイムピッカー) スタイル
+   ======================================================== */
+
+.time-scroll-picker-container {
+  background: #f8fafc;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-lg);
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-bottom: 8px;
+}
+
+/* --------------------------------------------------------
+   開始時間・終了時間の切り替えカード
+   -------------------------------------------------------- */
+.time-target-toggle-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.time-target-card {
+  flex: 1;
+  background: #ffffff;
+  border: 2px solid var(--border-color);
+  border-radius: var(--radius-md);
+  padding: 8px 12px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  text-align: left;
+}
+
+.time-target-card:hover {
+  border-color: #93c5fd;
+  background: #fbfdff;
+}
+
+.time-target-card.active {
+  border-color: var(--primary);
+  background: #eff6ff;
+  box-shadow: 0 4px 12px rgba(37, 99, 235, 0.15);
+}
+
+.time-target-label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: var(--text-secondary);
+}
+
+.time-target-card.active .time-target-label {
+  color: var(--primary);
+}
+
+.time-target-value {
+  font-size: 1.25rem;
+  font-weight: 800;
+  color: var(--text-main);
+  letter-spacing: 0.02em;
+  line-height: 1.2;
+}
+
+.time-target-card.active .time-target-value {
+  color: #1d4ed8;
+}
+
+.time-placeholder {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--text-muted);
+}
+
+.time-target-arrow {
+  color: var(--text-muted);
+  font-weight: 700;
+  font-size: 1.1rem;
+  user-select: none;
+}
+
+/* --------------------------------------------------------
+   ドラムロール・ホイールピッカー
+   -------------------------------------------------------- */
+.wheel-picker-section {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  background: #ffffff;
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-md);
+  padding: 10px 14px;
+  box-shadow: var(--shadow-sm);
+  position: relative;
+}
+
+.wheel-picker-wrapper {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  height: 200px; /* 40px * 5アイテム分 */
+  width: 100%;
+  max-width: 280px;
+  overflow: hidden;
+  user-select: none;
+}
+
+/* 中央ハイライトレンズ (選択中アイテムの枠) */
+.wheel-highlight-lens {
+  position: absolute;
+  top: 80px; /* (200 - 40) / 2 */
+  left: 10px;
+  right: 10px;
+  height: 40px;
+  background: rgba(37, 99, 235, 0.08);
+  border-top: 1.5px solid rgba(37, 99, 235, 0.35);
+  border-bottom: 1.5px solid rgba(37, 99, 235, 0.35);
+  border-radius: 8px;
+  pointer-events: none;
+  z-index: 5;
+}
+
+/* 上下のグラデーションフェード */
+.wheel-mask-top,
+.wheel-mask-bottom {
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 80px;
+  pointer-events: none;
+  z-index: 6;
+}
+
+.wheel-mask-top {
+  top: 0;
+  background: linear-gradient(to bottom, #ffffff 20%, rgba(255, 255, 255, 0) 100%);
+}
+
+.wheel-mask-bottom {
+  bottom: 0;
+  background: linear-gradient(to top, #ffffff 20%, rgba(255, 255, 255, 0) 100%);
+}
+
+/* カラム */
+.wheel-column {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  flex: 1;
+  max-width: 100px;
+  height: 100%;
+  position: relative;
+}
+
+.wheel-column-header {
+  position: absolute;
+  top: 4px;
+  font-size: 0.68rem;
+  font-weight: 700;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  z-index: 7;
+  pointer-events: none;
+}
+
+.wheel-scroll-list {
+  width: 100%;
+  height: 100%;
+  overflow-y: scroll;
+  scroll-snap-type: y mandatory;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none; /* Firefox */
+  -ms-overflow-style: none; /* IE */
+  padding: 0;
+  margin: 0;
+}
+
+.wheel-scroll-list::-webkit-scrollbar {
+  display: none; /* Chrome, Safari */
+}
+
+.wheel-padding {
+  height: 80px; /* 中央スナップ用のダミー領域 */
+  flex-shrink: 0;
+}
+
+.wheel-item {
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  scroll-snap-align: center;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  user-select: none;
+}
+
+.wheel-item:hover {
+  color: var(--text-main);
+}
+
+.wheel-item.selected {
+  font-size: 1.45rem;
+  font-weight: 800;
+  color: var(--primary);
+  transform: scale(1.1);
+}
+
+.wheel-colon {
+  font-size: 1.5rem;
+  font-weight: 800;
+  color: var(--primary);
+  margin-top: -2px;
+  padding: 0 4px;
+  user-select: none;
+  z-index: 8;
+}
+
+/* ツールバー (ステップ切り替え / 直接入力) */
+.picker-toolbar-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 8px;
+  width: 100%;
+  padding-top: 8px;
+  border-top: 1px dashed var(--border-light);
+}
+
+.minute-step-group {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.step-group-label {
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: var(--text-muted);
+}
+
+.step-buttons-segmented {
+  display: inline-flex;
+  background: #f1f5f9;
+  padding: 2px;
+  border-radius: var(--radius-full);
+  border: 1px solid var(--border-color);
+}
+
+.step-segment-btn {
+  padding: 3px 9px;
+  font-size: 0.74rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+  border-radius: var(--radius-full);
+  background: transparent;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.step-segment-btn:hover {
+  color: var(--text-main);
+}
+
+.step-segment-btn.active {
+  background: #ffffff;
+  color: var(--primary);
+  font-weight: 800;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.step-toggle-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.74rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+  background: #f8fafc;
+  border: 1px solid var(--border-color);
+  padding: 3px 8px;
+  border-radius: var(--radius-full);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+}
+
+.step-toggle-btn:hover {
+  background: #e2e8f0;
+  color: var(--text-main);
+}
+
+/* --------------------------------------------------------
+   終日モード表示パネル
+   -------------------------------------------------------- */
+.allday-active-panel {
+  background: #fffbeb;
+  border: 1px solid #fde68a;
+  border-radius: var(--radius-md);
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  text-align: center;
+}
+
+.allday-banner {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.allday-sun-icon {
+  color: #f59e0b;
+  flex-shrink: 0;
+}
+
+.allday-title {
+  font-size: 0.95rem;
+  font-weight: 800;
+  color: #92400e;
+}
+
+.allday-subtitle {
+  font-size: 0.78rem;
+  color: #b45309;
+  margin-top: 2px;
+}
+
+.btn-exit-allday {
+  background: #ffffff;
+  border: 1px solid #fcd34d;
+  color: #b45309;
+  font-size: 0.82rem;
+  font-weight: 700;
+  padding: 6px 14px;
+  border-radius: var(--radius-full);
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.btn-exit-allday:hover {
+  background: #fef3c7;
+}
+
+/* --------------------------------------------------------
+   終了時間未設定パネル
+   -------------------------------------------------------- */
+.no-endtime-panel {
+  background: #ffffff;
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-md);
+  padding: 18px 14px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  text-align: center;
+}
+
+.no-endtime-desc {
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--text-muted);
+}
+
+.endtime-quick-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: center;
+}
+
+.btn-set-endtime {
+  font-size: 0.8rem;
+  font-weight: 700;
+  padding: 6px 12px;
+  border-radius: var(--radius-md);
+  background: #f1f5f9;
+  border: 1px solid var(--border-color);
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.btn-set-endtime:hover {
+  background: #e2e8f0;
+  color: var(--text-main);
+}
+
+.btn-set-endtime.primary {
+  background: var(--primary-light);
+  border-color: var(--primary);
+  color: var(--primary);
+}
+
+.btn-set-endtime.primary:hover {
+  background: #dbeafe;
+}
+
+/* --------------------------------------------------------
+   手動直接入力パネル
+   -------------------------------------------------------- */
+.manual-time-input-panel {
+  background: #ffffff;
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-md);
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.manual-time-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.manual-time-row label {
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: var(--text-secondary);
+  white-space: nowrap;
+}
+
+.manual-input-field {
+  max-width: 140px;
+  font-size: 1.1rem;
+  font-weight: 700;
+  text-align: center;
+}
+
+.btn-switch-scroll {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--primary);
+  background: transparent;
+  cursor: pointer;
+  align-self: flex-start;
+}
+
+.btn-switch-scroll:hover {
+  text-decoration: underline;
+}
+
+/* --------------------------------------------------------
+   下部クイックプリセット・ショートカット
+   -------------------------------------------------------- */
+.quick-presets-section {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.quick-presets-label {
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: var(--text-muted);
+}
+
+.quick-presets-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.quick-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 10px;
+  border-radius: var(--radius-full);
+  background: #ffffff;
+  border: 1px solid var(--border-color);
+  font-size: 0.76rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.quick-chip:hover {
+  background: #f1f5f9;
+  border-color: #cbd5e1;
+  color: var(--text-main);
+  transform: translateY(-1px);
+}
+
+.quick-chip.active {
+  background: var(--primary-light);
+  border-color: var(--primary);
+  color: var(--primary);
+  font-weight: 700;
+}
+
+.quick-chip.allday-chip {
+  background: #fffbeb;
+  border-color: #fde68a;
+  color: #b45309;
+}
+
+.quick-chip.allday-chip.active {
+  background: #fef3c7;
+  border-color: #f59e0b;
+  color: #92400e;
+}
+
+.quick-chip.clear-chip {
+  background: #fef2f2;
+  border-color: #fecaca;
+  color: #dc2626;
+}
+
+.quick-chip.clear-chip:hover {
+  background: #fee2e2;
+}
+
+/* --------------------------------------------------------
+   レスポンシブ対応
+   -------------------------------------------------------- */
+@media (max-width: 480px) {
+  .time-scroll-picker-container {
+    padding: 10px;
+    gap: 8px;
+  }
+
+  .time-target-card {
+    padding: 6px 8px;
+  }
+
+  .time-target-value {
+    font-size: 1.1rem;
+  }
+
+  .wheel-picker-wrapper {
+    max-width: 240px;
+  }
+}
