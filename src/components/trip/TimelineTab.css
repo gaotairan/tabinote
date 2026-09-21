@@ -616,8 +616,27 @@
   color: var(--primary);
 }
 
+.action-icon-btn.move-btn:hover:not(:disabled) {
+  background: #eff6ff;
+  color: #2563eb;
+}
+
+.action-icon-btn:disabled {
+  opacity: 0.25;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
 .action-icon-btn.delete-btn:hover {
   color: var(--danger);
+}
+
+/* 時間順整列ボタンのフィードバック状態 */
+.btn-sorted-active {
+  background: #ecfdf5 !important;
+  border-color: #a7f3d0 !important;
+  color: #059669 !important;
+  transition: all 0.25s ease;
 }
 
 .item-location-row {

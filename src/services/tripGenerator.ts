@@ -10,6 +10,7 @@ import type {
 import type { RawCalendarEvent } from './icsParser';
 import { PRESET_COVERS } from '../mock/sampleTrip';
 import { inferTimeZone, shiftDateTime } from '../utils/timezone';
+import { compareScheduleItems } from '../utils/scheduleSort';
 
 export interface GenerateTripOptions {
   customTitle?: string;
@@ -265,11 +266,7 @@ export function generateTripFromEvents(
   const days: DaySchedule[] = [];
   let dayIndex = 1;
   daysMap.forEach((items, dateStr) => {
-    items.sort((a, b) => {
-      if (a.time === '終日') return -1;
-      if (b.time === '終日') return 1;
-      return a.time.localeCompare(b.time);
-    });
+    items.sort(compareScheduleItems);
 
     days.push({
       dayNumber: dayIndex,

@@ -23,6 +23,10 @@ import {
   Layers,
   ListOrdered,
   CalendarCheck2,
+  ArrowDownUp,
+  ChevronUp,
+  ChevronDown,
+  Check,
 } from 'lucide-react';
 import type {
   Trip,
@@ -36,6 +40,11 @@ import {
   convertTimeToTimezone,
   TIMEZONE_PRESETS,
 } from '../../utils/timezone';
+import {
+  compareScheduleItems,
+  sortScheduleItems,
+  normalizeTimeString,
+} from '../../utils/scheduleSort';
 import './TimelineTab.css';
 
 interface TimelineTabProps {
@@ -74,6 +83,9 @@ export const TimelineTab: React.FC<TimelineTabProps> = ({
   const [isTzModalOpen, setIsTzModalOpen] = useState(false);
   const [tzOffsetInput, setTzOffsetInput] = useState(trip.timeZoneOffset ?? 0);
   const [tzNameInput, setTzNameInput] = useState(trip.timeZoneName || '');
+
+  // 時間順整列フィードバック用（整列された日程番号）
+  const [sortedDayNumber, setSortedDayNumber] = useState<number | null>(null);
 
   // フォーム用状態
   const [itemTime, setItemTime] = useState('09:00');
@@ -162,10 +174,15 @@ export const TimelineTab: React.FC<TimelineTabProps> = ({
       ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(locationTrimmed)}`
       : undefined;
 
+    const normalizedTime = normalizeTimeString(itemTime) || '終日';
+    const normalizedEndTime = itemEndTime.trim()
+      ? normalizeTimeString(itemEndTime)
+      : undefined;
+
     const newItem: ScheduleItem = {
       id: editingItem ? editingItem.id : 'item-' + Date.now(),
-      time: itemTime.trim() || '終日',
-      endTime: itemEndTime.trim() || undefined,
+      time: normalizedTime,
+      endTime: normalizedEndTime,
       title: itemTitle.trim(),
       category: itemCategory,
       transportType: itemCategory === 'transport' ? itemTransportType : undefined,
@@ -198,18 +215,63 @@ export const TimelineTab: React.FC<TimelineTabProps> = ({
         }
       }
 
-      // 時刻順にソート
-      items.sort((a, b) => {
-        if (a.time === '終日') return -1;
-        if (b.time === '終日') return 1;
-        return a.time.localeCompare(b.time);
-      });
+      // 数値分換算による正確な時刻昇順ソート（終日は先頭）
+      items.sort(compareScheduleItems);
 
       return { ...day, items };
     });
 
     onUpdateTrip({ ...trip, days: updatedDays });
     setIsModalOpen(false);
+  };
+
+  // 指定した日程の予定を時間順に並べ替える
+  const handleSortDayItems = (dayNumber: number) => {
+    const updatedDays = trip.days.map((day) => {
+      if (day.dayNumber === dayNumber) {
+        return {
+          ...day,
+          items: sortScheduleItems(day.items),
+        };
+      }
+      return day;
+    });
+
+    onUpdateTrip({ ...trip, days: updatedDays });
+    setSortedDayNumber(dayNumber);
+    setTimeout(() => {
+      setSortedDayNumber((prev) => (prev === dayNumber ? null : prev));
+    }, 1800);
+  };
+
+  // 予定の手動上下移動
+  const handleMoveItem = (
+    itemId: string,
+    dayNumber: number,
+    direction: 'up' | 'down'
+  ) => {
+    const targetDay = trip.days.find((d) => d.dayNumber === dayNumber);
+    if (!targetDay) return;
+
+    const index = targetDay.items.findIndex((it) => it.id === itemId);
+    if (index === -1) return;
+
+    if (direction === 'up' && index === 0) return;
+    if (direction === 'down' && index === targetDay.items.length - 1) return;
+
+    const newIndex = direction === 'up' ? index - 1 : index + 1;
+    const newItems = [...targetDay.items];
+    const [moved] = newItems.splice(index, 1);
+    newItems.splice(newIndex, 0, moved);
+
+    const updatedDays = trip.days.map((day) => {
+      if (day.dayNumber === dayNumber) {
+        return { ...day, items: newItems };
+      }
+      return day;
+    });
+
+    onUpdateTrip({ ...trip, days: updatedDays });
   };
 
   const handleDeleteItem = (itemId: string, dayNumber: number) => {
@@ -389,6 +451,26 @@ export const TimelineTab: React.FC<TimelineTabProps> = ({
           <div className="timeline-card-header">
             <h4 className="item-title">{item.title}</h4>
             <div className="item-actions">
+              <button
+                type="button"
+                className="action-icon-btn move-btn"
+                onClick={() => handleMoveItem(item.id, dayNumber, 'up')}
+                disabled={index === 0}
+                title={index === 0 ? undefined : '予定を1つ上へ移動'}
+                aria-label="予定を1つ上へ移動"
+              >
+                <ChevronUp size={15} />
+              </button>
+              <button
+                type="button"
+                className="action-icon-btn move-btn"
+                onClick={() => handleMoveItem(item.id, dayNumber, 'down')}
+                disabled={index === totalItems - 1}
+                title={index === totalItems - 1 ? undefined : '予定を1つ下へ移動'}
+                aria-label="予定を1つ下へ移動"
+              >
+                <ChevronDown size={15} />
+              </button>
               <button
                 type="button"
                 className="action-icon-btn"
@@ -600,6 +682,28 @@ export const TimelineTab: React.FC<TimelineTabProps> = ({
                 )}
               </div>
               <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                {currentDay.items.length > 1 && (
+                  <button
+                    type="button"
+                    className={`btn btn-secondary ${
+                      sortedDayNumber === currentDay.dayNumber ? 'btn-sorted-active' : ''
+                    }`}
+                    onClick={() => handleSortDayItems(currentDay.dayNumber)}
+                    title="この日の予定を開始時間順に自動整列"
+                  >
+                    {sortedDayNumber === currentDay.dayNumber ? (
+                      <>
+                        <Check size={14} style={{ color: '#10b981' }} />
+                        <span style={{ color: '#10b981' }}>整列完了</span>
+                      </>
+                    ) : (
+                      <>
+                        <ArrowDownUp size={14} />
+                        <span>時間順に整列</span>
+                      </>
+                    )}
+                  </button>
+                )}
                 {onOpenCalendarUpdate && (
                   <button
                     className="btn btn-secondary"
@@ -692,14 +796,38 @@ export const TimelineTab: React.FC<TimelineTabProps> = ({
                     </h3>
                     {day.title && <span className="day-scroll-title">{day.title}</span>}
                   </div>
-                  <button
-                    type="button"
-                    className="btn btn-sm btn-primary day-add-item-btn"
-                    onClick={() => handleOpenAdd(day.dayNumber)}
-                  >
-                    <Plus size={14} />
-                    <span>予定を追加</span>
-                  </button>
+                  <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
+                    {day.items.length > 1 && (
+                      <button
+                        type="button"
+                        className={`btn btn-sm btn-secondary ${
+                          sortedDayNumber === day.dayNumber ? 'btn-sorted-active' : ''
+                        }`}
+                        onClick={() => handleSortDayItems(day.dayNumber)}
+                        title="この日の予定を開始時間順に自動整列"
+                      >
+                        {sortedDayNumber === day.dayNumber ? (
+                          <>
+                            <Check size={13} style={{ color: '#10b981' }} />
+                            <span style={{ color: '#10b981' }}>整列完了</span>
+                          </>
+                        ) : (
+                          <>
+                            <ArrowDownUp size={13} />
+                            <span>時間順に整列</span>
+                          </>
+                        )}
+                      </button>
+                    )}
+                    <button
+                      type="button"
+                      className="btn btn-sm btn-primary day-add-item-btn"
+                      onClick={() => handleOpenAdd(day.dayNumber)}
+                    >
+                      <Plus size={14} />
+                      <span>予定を追加</span>
+                    </button>
+                  </div>
                 </div>
 
                 {/* 日ごとのタイムラインリスト */}

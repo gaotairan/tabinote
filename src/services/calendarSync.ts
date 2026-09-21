@@ -3,6 +3,7 @@ import type { Trip, DaySchedule, ScheduleItem } from '../types/trip';
 import type { RawCalendarEvent } from './icsParser';
 import { inferCategory } from './tripGenerator';
 import { shiftDateTime } from '../utils/timezone';
+import { compareScheduleItems } from '../utils/scheduleSort';
 
 export type CalendarSyncMode = 'merge' | 'replace';
 
@@ -225,12 +226,8 @@ export function syncCalendarEventsIntoTrip(
       addedCount++;
     }
 
-    // 時刻順にソート（終日は先頭）
-    currentItems.sort((a, b) => {
-      if (a.time === '終日') return -1;
-      if (b.time === '終日') return 1;
-      return a.time.localeCompare(b.time);
-    });
+    // 時刻順にソート（終日は先頭、数値分換算による正確なソート）
+    currentItems.sort(compareScheduleItems);
 
     newDays.push({
       dayNumber,
