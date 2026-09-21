@@ -833,7 +833,21 @@
   align-items: center;
   justify-content: flex-end;
   gap: 10px;
-  margin-top: 16px;
+  margin-top: 24px;
+  padding-top: 14px;
+  border-top: 1px solid var(--border-light);
+  position: sticky;
+  bottom: -24px;
+  background: #ffffff;
+  padding-bottom: 8px;
+  z-index: 10;
+}
+
+@media (max-width: 640px) {
+  .modal-actions {
+    bottom: -20px;
+    padding-bottom: 12px;
+  }
 }
 
 /* 時差設定モーダル */

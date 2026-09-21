@@ -911,7 +911,7 @@ export const TimelineTab: React.FC<TimelineTabProps> = ({
         title={editingItem ? '予定を編集' : '新しい予定を追加'}
         maxWidth="500px"
       >
-        <form onSubmit={handleSaveItem} className="fade-in">
+        <form onSubmit={handleSaveItem}>
           {/* 日程選択（どの日に追加・変更するか） */}
           <div className="form-group">
             <label>対象の日程 *</label>
